@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Produtividade — Paytrack</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root{--bg:#111827;--surface:#1D2946;--surface2:#243156;--border:#2A3F7A;--accent:#FFE500;--accent2:#0055B8;--warn:#FFE500;--danger:#F05C5C;--purple:#60A5FA;--text:#EFF3FF;--text2:#7A8EBF;--text3:#4A5A8A;--radius:12px;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+  .topbar-left{display:flex;align-items:center;gap:14px;}
+  .logo{background:#FFE500;color:#1D2946;font-weight:700;font-size:13px;padding:6px 12px;border-radius:6px;letter-spacing:.5px;}
+  .topbar h1{font-size:15px;font-weight:500;}
+  .last-update{font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace;}
+  .refresh-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;}
+  .refresh-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .main{padding:1.5rem 2rem;max-width:1600px;margin:0 auto;}
+  .top-banner{background:linear-gradient(135deg,#1D2946,#243156);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+  .banner-title{font-size:20px;font-weight:700;}
+  .banner-sub{font-size:13px;color:var(--text2);margin-top:3px;}
+  .banner-period{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);background:#1D2946;padding:6px 14px;border-radius:6px;border:1px solid #0055B8;}
+  .controls-row{display:flex;gap:10px;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;}
+  .ctrl-group{display:flex;}
+  .ctrl-btn{background:var(--surface);border:1px solid var(--border);color:var(--text2);font-size:12px;font-weight:500;padding:7px 16px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;}
+  .ctrl-btn:first-child{border-radius:8px 0 0 8px;}
+  .ctrl-btn:last-child{border-radius:0 8px 8px 0;}
+  .ctrl-btn:not(:first-child){border-left:none;}
+  .ctrl-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .ctrl-btn:hover:not(.active){background:var(--surface2);color:var(--text);}
+  select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:13px;padding:7px 12px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;outline:none;min-width:180px;}
+  select:focus{border-color:var(--accent);}
+  .metric-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:1.2rem;}
+  .metric-tab{background:transparent;border:1px solid var(--border);color:var(--text2);font-size:12px;font-weight:500;padding:5px 14px;border-radius:20px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;}
+  .metric-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .metric-tab:hover:not(.active){border-color:var(--text3);color:var(--text);}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.5rem;}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.2rem;position:relative;overflow:hidden;}
+  .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+  .kpi-card.blue::before{background:var(--accent);}
+  .kpi-card.green::before{background:var(--accent2);}
+  .kpi-card.warn::before{background:var(--warn);}
+  .kpi-card.danger::before{background:var(--danger);}
+  .kpi-card.purple::before{background:var(--purple);}
+  .kpi-card.teal::before{background:#2DD4BF;}
+  .kpi-label{font-size:10px;color:#6B85B8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;font-weight:600;}
+  .kpi-value{font-size:24px;font-weight:700;color:var(--text);line-height:1;font-family:'JetBrains Mono',monospace;}
+  .kpi-sub{font-size:11px;color:#8BA3D4;margin-top:4px;font-weight:400;}
+  .kpi-sub2{font-size:11px;color:#A0B4D8;margin-top:2px;font-family:'JetBrains Mono',monospace;}
+  .chart-grid{display:grid;gap:14px;margin-bottom:14px;}
+  .chart-grid-2{grid-template-columns:1fr 1fr;}
+  .chart-grid-3{grid-template-columns:2fr 1fr;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem 1.4rem;}
+  .card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;}
+  .card-title{font-size:13px;font-weight:600;color:var(--text);}
+  .card-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+  .chart-wrap{position:relative;}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;}
+  .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);}
+  .legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;}
+  td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap;}
+  tr:last-child td{border-bottom:none;}
+  tbody tr:hover td{background:var(--surface2);}
+  .num{font-family:'JetBrains Mono',monospace;}
+  .badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;font-family:'JetBrains Mono',monospace;}
+  .badge-ok{background:#0A1F4D;color:#FFE500;}
+  .badge-warn{background:#3B2A0D;color:#FFE500;}
+  .badge-bad{background:#3B0D0D;color:#F05C5C;}
+  .badge-na{background:var(--surface2);color:var(--text3);}
+  .meta-bar-wrap{flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+  .meta-bar{height:100%;border-radius:3px;transition:width .6s ease;}
+  .loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999;}
+  .loading-overlay.hidden{display:none;}
+  .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading-text{font-size:14px;color:var(--text2);}
+  .divider{flex:1;}
+  .day-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
+  .day-filter-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;width:100%;}
+  .day-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .15s;}
+  .day-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
+  .day-btn:hover:not(.active){border-color:var(--text3);color:var(--text);}
+  .day-summary{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .day-summary-item{font-size:12px;color:var(--text2);}
+  .day-summary-item strong{color:var(--text);font-family:'JetBrains Mono',monospace;}
+
+  
+  .chat-suggestions{display:flex;flex-wrap:wrap;gap:4px;padding:0 12px 10px;}
+  .chat-sug{background:#112050;border:1px solid #1A2F6A;border-radius:6px;padding:4px 8px;font-size:10px;color:#7A8EBF;cursor:pointer;}
+  .chat-sug:hover{border-color:#FFE500;color:#FFE500;}
+</style>
+</head>
+<body>
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Carregando dados da planilha...</div>
+</div>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">PAYTRACK</div>
+    <h1>Dashboard de Produtividade</h1>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span class="last-update" id="lastUpdate">—</span>
+    <button class="refresh-btn" onclick="loadData()">↻ Atualizar</button>
+  </div>
+</div>
+<div class="main">
+  <div class="top-banner">
+    <div>
+      <div class="banner-title">Time de Atendimento</div>
+      <div class="banner-sub">Produtividade diária · Meta: 40 atendimentos/dia</div>
+    </div>
+    <div class="banner-period">Junho 2026</div>
+  </div>
+  <div class="controls-row">
+    <div class="ctrl-group">
+      <button class="ctrl-btn active" onclick="setView('team',this)">Visão do Time</button>
+      <button class="ctrl-btn" onclick="setView('diario',this)">Visão Diária</button>
+      <button class="ctrl-btn" onclick="setView('individual',this)">Consultor Individual</button>
+      <button class="ctrl-btn" onclick="setView('semana',this)">Comparar Semanas</button>
+      <button class="ctrl-btn" onclick="setView('metas',this)">Metas</button>
+      <button class="ctrl-btn" onclick="setView('qualidade',this)">Qualidade</button>
+      <button class="ctrl-btn" onclick="setView('gestao',this)">Gestao</button>
+    </div>
+    <select id="consultorSel" style="display:none" onchange="currentConsultor=this.value;render()"></select>
+    <div class="divider"></div>
+  </div>
+  <div class="metric-tabs" id="metricTabs">
+    <button class="metric-tab active" data-metric="total" onclick="setMetric('total',this)">Total</button>
+    <button class="metric-tab" data-metric="tel" onclick="setMetric('tel',this)">Telefone</button>
+    <button class="metric-tab" data-metric="chat" onclick="setMetric('chat',this)">WhatsApp</button>
+    <button class="metric-tab" data-metric="zen" onclick="setMetric('zen',this)">Zendesk</button>
+    <button class="metric-tab" data-metric="supplier" onclick="setMetric('supplier',this)">Supplier</button>
+  </div>
+  <div class="kpi-grid" id="kpiGrid"></div>
+  <div id="chartsArea"></div>
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="card-header">
+      <div><div class="card-title" id="tableTitle">Ranking do Time</div><div class="card-sub" id="tableSub">Total acumulado no período</div></div>
+    </div>
+    <div class="table-wrap"><table id="mainTable"></table></div>
+  </div>
+</div>
+<script>
+const API_URL='https://script.google.com/a/macros/paytrack.com.br/s/AKfycbxjJxKCf5Eci39hQlwKxwc4rrGmg_NCAKwA7juWA6n2XzKIvA4YAHzgS32bI7KcQkon/exec';
+const META_DIA=40;
+const PALETTE=['#0055B8','#FFE500','#FFE500','#60A5FA','#F05C5C','#00C8C8','#FBBF24','#0055B8','#818CF8','#FFE500'];
+const CANAL_COLORS={tel:'#0055B8',chat:'#FFE500',zen:'#00C8C8',supplier:'#FFE50099'};
+const WEEK_COLORS={S1:'#0055B8',S2:'#FFE500',S3:'#00C8C8',S4:'#0055B8'};
+const WEEK_MAP={S1:'01–07 jun',S2:'08–14 jun',S3:'15–21 jun',S4:'22–30 jun'};
+
+let RAW={},names=[],currentView='team',currentMetric='total',currentConsultor='',currentDay='',charts={};
+
+function timeToMin(t){if(!t||t==='-')return null;const s=String(t).trim();if(!s||s==='-')return null;const p=s.split(':');if(p.length===3){const h=parseInt(p[0])||0,m=parseInt(p[1])||0,sc=parseFloat(p[2])||0;if(h===0&&m===0&&sc===0)return null;return h*60+m+sc/60;}if(p.length===2){return(parseInt(p[0])||0)+(parseInt(p[1])||0)/60;}return null;}
+function fmtMin(m){
+  if(m===null||m===undefined)return'—';
+  const totalSec=Math.round(m*60);
+  if(totalSec===0)return'—';
+  const min=Math.floor(totalSec/60);
+  const sec=totalSec%60;
+  if(min===0)return String(sec).padStart(2,'0')+'seg';
+  if(sec===0)return String(min).padStart(2,'0')+'min';
+  return String(min).padStart(2,'0')+'min '+String(sec).padStart(2,'0')+'seg';
+}
+function totalFor(n,m){return(RAW[n]||[]).reduce((s,r)=>s+(r[m]||0),0);}
+function avgSLA(n,field){const f=field||'sla';const v=(RAW[n]||[]).filter(r=>r[f]!==null&&typeof r[f]==='number'&&r[f]>=0).map(r=>r[f]);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;}
+function avgCSAT(n,ch){const v=(RAW[n]||[]).filter(r=>r['csat_'+ch]!==null&&typeof r['csat_'+ch]==='number').map(r=>r['csat_'+ch]);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;}
+function avgTMA(n,ch){const v=(RAW[n]||[]).map(r=>timeToMin(r['tma_'+ch])).filter(x=>x!==null&&x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;}
+function avgTME(n,ch){const v=(RAW[n]||[]).map(r=>timeToMin(r['tme_'+ch])).filter(x=>x!==null&&x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;}
+function getAllDates(){const s=new Set();names.forEach(n=>(RAW[n]||[]).forEach(r=>s.add(r.data)));return[...s].sort((a,b)=>{const[da,ma]=a.split('/').map(Number);const[db,mb]=b.split('/').map(Number);return ma*100+da-(mb*100+db);});}
+function getWeek(d){const[day]=d.split('/').map(Number);return day<=7?'S1':day<=14?'S2':day<=21?'S3':'S4';}
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function slaClass(v){return v===null?'badge-na':v>=90?'badge-ok':v>=70?'badge-warn':'badge-bad';}
+function slaText(v){return v===null?'N/A':Math.round(v)+'%';}
+function chartOpts(noLegend,extraScales){return{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:!noLegend,labels:{color:'#8B93A8',font:{size:11},boxWidth:10}},tooltip:{backgroundColor:'#1E2333',borderColor:'#2A3045',borderWidth:1,titleColor:'#E8ECF4',bodyColor:'#8B93A8',padding:10}},scales:extraScales||{y:{beginAtZero:true,ticks:{color:'#555E75',font:{size:10}},grid:{color:'#2A3045'}},x:{ticks:{color:'#555E75',font:{size:10},maxRotation:45},grid:{display:false}}}};}
+
+async function loadData(){
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+  try{
+    const res=await fetch(API_URL+'?t='+Date.now());
+    RAW=await res.json();
+    names=Object.keys(RAW).filter(n=>RAW[n]&&RAW[n].length>0);
+    const sel=document.getElementById('consultorSel');
+    sel.innerHTML='';
+    names.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});
+    currentConsultor=names[0]||'';
+    sel.value=currentConsultor;
+    currentDay=getAllDates().slice(-1)[0]||'';
+    document.getElementById('lastUpdate').textContent='Atualizado: '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    render();
+  }catch(e){
+    document.getElementById('chartsArea').innerHTML='<div style="background:#3B0D0D;border:1px solid #F05C5C;border-radius:12px;padding:1.5rem;text-align:center;color:#F05C5C;margin:2rem 0">⚠️ Não foi possível carregar os dados.</div>';
+  }finally{document.getElementById('loadingOverlay').classList.add('hidden');}
+}
+
+function setView(v,btn){
+  currentView=v;
+  document.querySelectorAll('.ctrl-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const showMetrics=!['semana','metas','qualidade','diario','gestao'].includes(v);
+  document.getElementById('metricTabs').style.display=showMetrics?'':'none';
+  document.getElementById('consultorSel').style.display=v==='individual'?'':'none';
+  render();
+}
+function setMetric(m,btn){currentMetric=m;document.querySelectorAll('.metric-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();}
+function render(){renderKPIs();if(currentView==='team')renderTeam();else if(currentView==='diario')renderDiario();else if(currentView==='individual')renderIndividual();else if(currentView==='semana')renderSemana();else if(currentView==='metas')renderMetas();else if(currentView==='qualidade')renderQualidade();else if(currentView==='gestao')renderGestao();}
+
+// ── KPIs ─────────────────────────────────────────────────────
+function renderKPIs(){
+  const g=document.getElementById('kpiGrid');
+
+  if(currentView==='diario'&&currentDay){
+    // KPIs do dia selecionado
+    const dayRows=names.map(n=>(RAW[n]||[]).find(r=>r.data===currentDay)).filter(Boolean);
+    const tt=dayRows.reduce((s,r)=>s+(r.total||0),0);
+    const tel=dayRows.reduce((s,r)=>s+(r.tel||0),0);
+    const chat=dayRows.reduce((s,r)=>s+(r.chat||0),0);
+    const zen=dayRows.reduce((s,r)=>s+(r.zen||0),0);
+    const sup=dayRows.reduce((s,r)=>s+(r.supplier||0),0);
+    const acimaMeta=dayRows.filter(r=>r.total>=META_DIA).length;
+    const slaZenVals=dayRows.map(r=>r.sla_zen).filter(v=>v!==null&&typeof v==='number');
+    const slaZen=slaZenVals.length?slaZenVals.reduce((a,b)=>a+b,0)/slaZenVals.length:null;
+    const tmaT=dayRows.map(r=>timeToMin(r.tma_tel)).filter(x=>x&&x>0);
+    const tmeT=dayRows.map(r=>timeToMin(r.tme_tel)).filter(x=>x&&x>0);
+    const tmeC=dayRows.map(r=>timeToMin(r.tme_chat)).filter(x=>x&&x>0);
+    const avgTmaT=tmaT.length?tmaT.reduce((a,b)=>a+b,0)/tmaT.length:null;
+    const avgTmeT=tmeT.length?tmeT.reduce((a,b)=>a+b,0)/tmeT.length:null;
+    const avgTmeC=tmeC.length?tmeC.reduce((a,b)=>a+b,0)/tmeC.length:null;
+    g.innerHTML=`
+      <div class="kpi-card blue"><div class="kpi-label">Total do dia</div><div class="kpi-value">${tt}</div><div class="kpi-sub">${dayRows.length} consultores</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Acima da Meta</div><div class="kpi-value">${acimaMeta}/${dayRows.length}</div><div class="kpi-sub">≥ ${META_DIA} atend.</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">Telefone</div><div class="kpi-value">${tel}</div><div class="kpi-sub2">TMA: ${fmtMin(avgTmaT)} · TME: ${fmtMin(avgTmeT)}</div></div>
+      <div class="kpi-card green"><div class="kpi-label">WhatsApp</div><div class="kpi-value">${chat}</div><div class="kpi-sub2">TME: ${fmtMin(avgTmeC)}</div></div>
+      <div class="kpi-card purple"><div class="kpi-label">Zendesk</div><div class="kpi-value">${zen}</div><div class="kpi-sub2">SLA: ${slaText(slaZen!==null?slaZen*100:null)}</div></div>
+      <div class="kpi-card warn"><div class="kpi-label">Supplier</div><div class="kpi-value">${sup}</div><div class="kpi-sub">${tt?Math.round(sup/tt*100):0}% do total</div></div>`;
+    return;
+  }
+
+  if(currentView==='individual'){
+    const n=currentConsultor;if(!n)return;
+    const tt=totalFor(n,'total'),tel=totalFor(n,'tel'),chat=totalFor(n,'chat'),zen=totalFor(n,'zen'),sup=totalFor(n,'supplier');
+    const sla=avgSLA(n,'sla_zen');const dias=(RAW[n]||[]).length;
+    const metaDias=dias*META_DIA;const pctMeta=metaDias?Math.round(tt/metaDias*100):0;
+    const tmaT=avgTMA(n,'tel'),tmeT=avgTME(n,'tel'),tmeC=avgTME(n,'chat'),tmaC=avgTMA(n,'chat');
+    g.innerHTML=`
+      <div class="kpi-card blue"><div class="kpi-label">Total</div><div class="kpi-value">${tt}</div><div class="kpi-sub">${dias} dias</div></div>
+      <div class="kpi-card ${pctMeta>=100?'green':pctMeta>=70?'warn':'danger'}"><div class="kpi-label">Meta</div><div class="kpi-value">${pctMeta}%</div><div class="kpi-sub">${metaDias} total</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">Telefone</div><div class="kpi-value">${tel}</div><div class="kpi-sub2">TMA: ${fmtMin(tmaT)}</div><div class="kpi-sub2">TME: ${fmtMin(tmeT)}</div></div>
+      <div class="kpi-card green"><div class="kpi-label">WhatsApp</div><div class="kpi-value">${chat}</div><div class="kpi-sub2">TMA: ${fmtMin(tmaC)}</div><div class="kpi-sub2">TME: ${fmtMin(tmeC)}</div></div>
+      <div class="kpi-card purple"><div class="kpi-label">Zendesk</div><div class="kpi-value">${zen}</div><div class="kpi-sub2">SLA: ${slaText(sla!==null?sla*100:null)}</div></div>
+      <div class="kpi-card warn"><div class="kpi-label">Supplier</div><div class="kpi-value">${sup}</div><div class="kpi-sub">${tt?Math.round(sup/tt*100):0}%</div></div>`;
+    return;
+  }
+
+  // Geral (team, semanas, metas, qualidade)
+  const tt=names.reduce((s,n)=>s+totalFor(n,'total'),0);
+  const tel=names.reduce((s,n)=>s+totalFor(n,'tel'),0);
+  const chat=names.reduce((s,n)=>s+totalFor(n,'chat'),0);
+  const zen=names.reduce((s,n)=>s+totalFor(n,'zen'),0);
+  const sup=names.reduce((s,n)=>s+totalFor(n,'supplier'),0);
+  const acimaMeta=names.filter(n=>{const d=RAW[n]||[];return d.length&&(totalFor(n,'total')/d.length)>=META_DIA;}).length;
+  const tmaT=names.map(n=>avgTMA(n,'tel')).filter(v=>v!==null);
+  const tmeT=names.map(n=>avgTME(n,'tel')).filter(v=>v!==null);
+  const tmeC=names.map(n=>avgTME(n,'chat')).filter(v=>v!==null);
+  const avgTmaTG=tmaT.length?tmaT.reduce((a,b)=>a+b,0)/tmaT.length:null;
+  const avgTmeTG=tmeT.length?tmeT.reduce((a,b)=>a+b,0)/tmeT.length:null;
+  const avgTmeCG=tmeC.length?tmeC.reduce((a,b)=>a+b,0)/tmeC.length:null;
+  const slaZenVals=names.map(n=>avgSLA(n,'sla_zen')).filter(v=>v!==null);
+  const slaZenMedia=slaZenVals.length?slaZenVals.reduce((a,b)=>a+b,0)/slaZenVals.length:null;
+  g.innerHTML=`
+    <div class="kpi-card blue"><div class="kpi-label">Total Atendimentos</div><div class="kpi-value">${tt.toLocaleString('pt-BR')}</div><div class="kpi-sub">${getAllDates().length} dias · ${acimaMeta}/${names.length} na meta</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">Telefone</div><div class="kpi-value">${tel.toLocaleString('pt-BR')}</div><div class="kpi-sub2">TMA: ${fmtMin(avgTmaTG)} · TME: ${fmtMin(avgTmeTG)}</div></div>
+    <div class="kpi-card green"><div class="kpi-label">WhatsApp</div><div class="kpi-value">${chat.toLocaleString('pt-BR')}</div><div class="kpi-sub2">TME: ${fmtMin(avgTmeCG)}</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">Zendesk</div><div class="kpi-value">${zen.toLocaleString('pt-BR')}</div><div class="kpi-sub2">SLA: ${slaText(slaZenMedia!==null?slaZenMedia*100:null)}</div></div>
+    <div class="kpi-card warn"><div class="kpi-label">Supplier</div><div class="kpi-value">${sup.toLocaleString('pt-BR')}</div><div class="kpi-sub">${tt?Math.round(sup/tt*100):0}% do total</div></div>`;
+}
+
+// ── TEAM ─────────────────────────────────────────────────────
+function renderTeam(){
+  const allDates=getAllDates();
+  const allSorted=names.slice().sort((a,b)=>totalFor(b,currentMetric)-totalFor(a,currentMetric));
+  
+  // Initialize selected consultors (top 5 by default)
+  if(!window.selectedConsultors) window.selectedConsultors=new Set(allSorted.slice(0,5).map(n=>n));
+
+  const area=document.getElementById('chartsArea');
+  area.innerHTML=`
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-header"><div><div class="card-title">Evolucao diaria de atendimentos</div><div class="card-sub">Clique nos nomes para mostrar ou ocultar · Linha pontilhada = meta de ${META_DIA}/dia</div></div></div>
+      <div id="consultorFilters" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
+      <div class="chart-wrap" style="height:320px"><canvas id="lineChart"></canvas></div>
+    </div>
+    <div class="chart-grid chart-grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Distribuicao por canal</div></div></div>
+        <div class="chart-wrap" style="height:260px"><canvas id="canalChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Volume total por consultor</div></div></div>
+        <div class="chart-wrap" style="height:260px"><canvas id="volChart"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid chart-grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">SLA Zendesk por consultor</div><div class="card-sub">Verde >=90% · Amarelo >=70%</div></div></div>
+        <div class="chart-wrap" style="height:240px"><canvas id="slaChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">SLA Supplier por consultor</div></div></div>
+        <div class="chart-wrap" style="height:240px"><canvas id="slaSupChart"></canvas></div>
+      </div>
+    </div>`;
+
+  // Build filter buttons
+  const filterDiv=document.getElementById('consultorFilters');
+  
+  // Select all / Clear buttons
+  const btnAll=document.createElement('button');
+  btnAll.textContent='Todos';
+  btnAll.style.cssText='font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #1A2F6A;background:#112050;color:#7A8EBF;cursor:pointer;font-family:Inter,sans-serif;';
+  btnAll.onclick=function(){window.selectedConsultors=new Set(names);renderLineChart();updateFilterBtns();};
+  filterDiv.appendChild(btnAll);
+
+  const btnNone=document.createElement('button');
+  btnNone.textContent='Limpar';
+  btnNone.style.cssText='font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #1A2F6A;background:#112050;color:#7A8EBF;cursor:pointer;font-family:Inter,sans-serif;margin-right:6px;';
+  btnNone.onclick=function(){window.selectedConsultors=new Set();renderLineChart();updateFilterBtns();};
+  filterDiv.appendChild(btnNone);
+
+  const sep=document.createElement('div');
+  sep.style.cssText='width:1px;height:24px;background:#1A2F6A;margin:0 4px;align-self:center;';
+  filterDiv.appendChild(sep);
+
+  allSorted.forEach(function(n,i){
+    const btn=document.createElement('button');
+    btn.dataset.name=n;
+    btn.textContent=n.split(' ')[0];
+    btn.style.cssText='font-size:11px;padding:4px 12px;border-radius:6px;border:1px solid;cursor:pointer;font-family:Inter,sans-serif;transition:all .15s;font-weight:500;';
+    btn.onclick=function(){
+      if(window.selectedConsultors.has(n)) window.selectedConsultors.delete(n);
+      else window.selectedConsultors.add(n);
+      renderLineChart();
+      updateFilterBtns();
+    };
+    filterDiv.appendChild(btn);
+  });
+
+  function updateFilterBtns(){
+    document.querySelectorAll('#consultorFilters button[data-name]').forEach(function(btn,i){
+      const n=btn.dataset.name;
+      const idx=allSorted.indexOf(n);
+      const color=PALETTE[idx%PALETTE.length];
+      if(window.selectedConsultors.has(n)){
+        btn.style.background=color+'30';
+        btn.style.borderColor=color;
+        btn.style.color=color;
+      } else {
+        btn.style.background='var(--surface2)';
+        btn.style.borderColor='#1A2F6A';
+        btn.style.color='#3D4F80';
+      }
+    });
+  }
+
+  function renderLineChart(){
+    destroyChart('line');
+    const selected=[...window.selectedConsultors];
+    const metaDataset={label:'Meta',data:allDates.map(()=>META_DIA),borderColor:'#FFE50060',borderDash:[6,3],borderWidth:2,pointRadius:0,fill:false,tension:0,type:'line'};
+    const datasets=[metaDataset,...selected.map(function(n){
+      const idx=allSorted.indexOf(n);
+      const color=PALETTE[idx%PALETTE.length];
+      return {label:n.split(' ')[0],tension:.3,borderWidth:2.5,pointRadius:4,pointHoverRadius:6,borderColor:color,backgroundColor:color+'15',fill:false,data:allDates.map(function(d){const r=(RAW[n]||[]).find(function(x){return x.data===d;});return r?(r[currentMetric]||0):null;})};
+    })];
+    charts['line']=new Chart(document.getElementById('lineChart').getContext('2d'),{
+      type:'line',
+      data:{labels:allDates,datasets:datasets},
+      options:{responsive:true,maintainAspectRatio:false,spanGaps:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#1E2333',borderColor:'#1A2F6A',borderWidth:1,titleColor:'#EFF3FF',bodyColor:'#7A8EBF',padding:10,mode:'index',intersect:false}},scales:{y:{beginAtZero:true,ticks:{color:'#3D4F80',font:{size:10}},grid:{color:'#1A2F6A'}},x:{ticks:{color:'#3D4F80',font:{size:10},maxRotation:45},grid:{display:false}}}}
+    });
+  }
+
+  updateFilterBtns();
+  renderLineChart();
+
+  destroyChart('canal');
+  const tel=names.reduce((s,n)=>s+totalFor(n,'tel'),0),chat=names.reduce((s,n)=>s+totalFor(n,'chat'),0),zen=names.reduce((s,n)=>s+totalFor(n,'zen'),0),sup=names.reduce((s,n)=>s+totalFor(n,'supplier'),0);
+  charts['canal']=new Chart(document.getElementById('canalChart').getContext('2d'),{type:'doughnut',data:{labels:['Telefone','WhatsApp','Zendesk','Supplier'],datasets:[{data:[tel,chat,zen,sup],backgroundColor:[CANAL_COLORS.tel,CANAL_COLORS.chat,CANAL_COLORS.zen,CANAL_COLORS.supplier],borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom',labels:{color:'#7A8EBF',font:{size:11},boxWidth:10,padding:12}}}}});
+
+  destroyChart('vol');
+  const volData=names.map(n=>({n,v:totalFor(n,currentMetric)})).sort((a,b)=>b.v-a.v);
+  charts['vol']=new Chart(document.getElementById('volChart').getContext('2d'),{type:'bar',data:{labels:volData.map(x=>x.n.split(' ')[0]),datasets:[{data:volData.map(x=>x.v),backgroundColor:'#0055B860',borderColor:'#0055B8',borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{color:'#3D4F80',font:{size:10}},grid:{color:'#1A2F6A'}},x:{ticks:{color:'#3D4F80',font:{size:10},maxRotation:45},grid:{display:false}}}}});
+
+  destroyChart('sla');
+  const slaData=names.map(n=>({n,v:avgSLA(n,'sla_zen')})).filter(x=>x.v!==null).map(x=>({n:x.n,v:x.v*100})).sort((a,b)=>b.v-a.v);
+  charts['sla']=new Chart(document.getElementById('slaChart').getContext('2d'),{type:'bar',data:{labels:slaData.map(x=>x.n.split(' ')[0]),datasets:[{data:slaData.map(x=>Math.round(x.v)),backgroundColor:slaData.map(x=>x.v>=90?'#22C55E60':x.v>=70?'#FFE50060':'#F05C5C60'),borderColor:slaData.map(x=>x.v>=90?'#22C55E':x.v>=70?'#FFE500':'#F05C5C'),borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{color:'#3D4F80',font:{size:10},callback:v=>v+'%'},grid:{color:'#1A2F6A'}},x:{ticks:{color:'#3D4F80',font:{size:10},maxRotation:45},grid:{display:false}}}}});
+
+  destroyChart('slaSup');
+  const slaSupData=names.map(n=>({n,v:avgSLA(n,'sla')})).filter(x=>x.v!==null).map(x=>({n:x.n,v:x.v*100})).sort((a,b)=>b.v-a.v);
+  charts['slaSup']=new Chart(document.getElementById('slaSupChart').getContext('2d'),{type:'bar',data:{labels:slaSupData.map(x=>x.n.split(' ')[0]),datasets:[{data:slaSupData.map(x=>Math.round(x.v)),backgroundColor:slaSupData.map(x=>x.v>=90?'#22C55E60':x.v>=70?'#FFE50060':'#F05C5C60'),borderColor:slaSupData.map(x=>x.v>=90?'#22C55E':x.v>=70?'#FFE500':'#F05C5C'),borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{color:'#3D4F80',font:{size:10},callback:v=>v+'%'},grid:{color:'#1A2F6A'}},x:{ticks:{color:'#3D4F80',font:{size:10},maxRotation:45},grid:{display:false}}}}});
+
+  renderTable();
+}
+
+function renderDiario(){
+  const allDates=getAllDates();
+  if(!currentDay)currentDay=allDates[allDates.length-1];
+
+  document.getElementById('chartsArea').innerHTML=`
+    <div class="day-filter">
+      <div class="day-filter-label">Selecione o dia</div>
+      <div id="dayBtns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    </div>
+    <div class="chart-grid chart-grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title" id="dayBarTitle">Atendimentos — ${currentDay}</div><div class="card-sub">Verde = atingiu meta · Vermelho = abaixo</div></div></div>
+        <div class="chart-wrap" style="height:300px"><canvas id="dayBar"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">SLA Zendesk — ${currentDay}</div></div></div>
+        <div class="chart-wrap" style="height:300px"><canvas id="daySla"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid chart-grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">TMA Telefone — ${currentDay}</div><div class="card-sub">Tempo médio por consultor (min)</div></div></div>
+        <div class="chart-wrap" style="height:240px"><canvas id="dayTmaTel"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">TME WhatsApp — ${currentDay}</div><div class="card-sub">Tempo médio de espera por consultor (min)</div></div></div>
+        <div class="chart-wrap" style="height:240px"><canvas id="dayTmeWpp"></canvas></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-header"><div><div class="card-title">Evolução de todos os consultores</div><div class="card-sub">Linha pontilhada = meta de ${META_DIA}/dia</div></div></div>
+      <div class="legend" id="evolLegend"></div>
+      <div class="chart-wrap" style="height:280px"><canvas id="evolChart"></canvas></div>
+    </div>`;
+
+  // Day buttons
+  const db=document.getElementById('dayBtns');
+  allDates.forEach(d=>{
+    const btn=document.createElement('button');
+    btn.className='day-btn'+(d===currentDay?' active':'');
+    btn.textContent=d;
+    btn.onclick=()=>{currentDay=d;renderDiario();renderKPIs();};
+    db.appendChild(btn);
+  });
+
+  const dayNames=names.filter(n=>(RAW[n]||[]).some(r=>r.data===currentDay));
+  const dayRows=dayNames.map(n=>(RAW[n]||[]).find(r=>r.data===currentDay));
+  const dayVals=dayRows.map(r=>r?r.total:0);
+
+  document.getElementById('dayBarTitle').textContent='Atendimentos — '+currentDay;
+
+  destroyChart('dayBar');
+  charts['dayBar']=new Chart(document.getElementById('dayBar').getContext('2d'),{type:'bar',data:{labels:dayNames.map(n=>n.split(' ')[0]),datasets:[{label:'Meta',data:dayNames.map(()=>META_DIA),type:'line',borderColor:'#FFE50080',borderDash:[6,3],borderWidth:2,pointRadius:0,fill:false},{label:'Atendimentos',data:dayVals,backgroundColor:dayVals.map(v=>v>=META_DIA?'#FFE50060':'#F05C5C60'),borderColor:dayVals.map(v=>v>=META_DIA?'#FFE500':'#F05C5C'),borderWidth:1.5,borderRadius:4}]},options:{...chartOpts(true),plugins:{legend:{display:false}}}});
+
+  destroyChart('daySla');
+  const slaDay=dayRows.map(r=>r&&r.sla_zen!==null?Math.round(r.sla_zen*100):null);
+  charts['daySla']=new Chart(document.getElementById('daySla').getContext('2d'),{type:'bar',data:{labels:dayNames.map(n=>n.split(' ')[0]),datasets:[{data:slaDay,backgroundColor:slaDay.map(v=>v===null?'#2A3045':v>=90?'#FFE50060':v>=70?'#FFE50060':'#F05C5C60'),borderColor:slaDay.map(v=>v===null?'#555E75':v>=90?'#FFE500':v>=70?'#FFE500':'#F05C5C'),borderWidth:1.5,borderRadius:4}]},options:{...chartOpts(true),scales:{y:{min:0,max:100,ticks:{color:'#555E75',callback:v=>v+'%',font:{size:10}},grid:{color:'#2A3045'}},x:{ticks:{color:'#555E75',font:{size:10},maxRotation:45},grid:{display:false}}}}});
+
+  destroyChart('dayTmaTel');
+  const tmaTelDay=dayRows.map(r=>r?timeToMin(r.tma_tel):null).map(v=>v&&v>0?Math.round(v*10)/10:null);
+  charts['dayTmaTel']=new Chart(document.getElementById('dayTmaTel').getContext('2d'),{type:'bar',data:{labels:dayNames.map(n=>n.split(' ')[0]),datasets:[{data:tmaTelDay,backgroundColor:'#0055B860',borderColor:'#0055B8',borderWidth:1.5,borderRadius:4}]},options:chartOpts(true)});
+
+  destroyChart('dayTmeWpp');
+  const tmeWppDay=dayRows.map(r=>r?timeToMin(r.tme_chat):null).map(v=>v&&v>0?Math.round(v*10)/10:null);
+  charts['dayTmeWpp']=new Chart(document.getElementById('dayTmeWpp').getContext('2d'),{type:'bar',data:{labels:dayNames.map(n=>n.split(' ')[0]),datasets:[{label:'Meta',data:dayNames.map(()=>50/60),type:'line',borderColor:'#F05C5C',borderDash:[6,3],borderWidth:2,pointRadius:0,fill:false},{data:tmeWppDay,backgroundColor:tmeWppDay.map(v=>v===null||v<=50/60?'#0055B860':'#F05C5C60'),borderColor:tmeWppDay.map(v=>v===null||v<=50/60?'#0055B8':'#F05C5C'),borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{color:'#3D4F80',font:{size:10},callback:function(v){return fmtMin(v);}},grid:{color:'#1A2F6A'}},x:{ticks:{color:'#3D4F80',font:{size:10},maxRotation:45},grid:{display:false}}}}});
+
+  // Evolution
+  const top8=names.slice().sort((a,b)=>totalFor(b,'total')-totalFor(a,'total')).slice(0,8);
+  const leg=document.getElementById('evolLegend');
+  top8.forEach((n,i)=>leg.innerHTML+=`<div class="legend-item"><span class="legend-dot" style="background:${PALETTE[i]}"></span>${n.split(' ')[0]}</div>`);
+  destroyChart('evol');
+  charts['evol']=new Chart(document.getElementById('evolChart').getContext('2d'),{type:'line',data:{labels:getAllDates(),datasets:[{label:'Meta',data:getAllDates().map(()=>META_DIA),borderColor:'#FFE50080',borderDash:[6,3],borderWidth:2,pointRadius:0,fill:false,tension:0},...top8.map((n,i)=>({label:n.split(' ')[0],tension:.35,borderWidth:2,pointRadius:3,borderColor:PALETTE[i],backgroundColor:PALETTE[i]+'15',fill:false,data:getAllDates().map(d=>{const r=(RAW[n]||[]).find(x=>x.data===d);return r?r.total:null;})}))]},options:chartOpts(true)});
+
+  // Table
+  document.getElementById('tableTitle').textContent='Detalhe do dia '+currentDay;
+  document.getElementById('tableSub').textContent='Todos os consultores que trabalharam neste dia';
+  const t=document.getElementById('mainTable');
+  t.innerHTML='<thead><tr><th>Consultor(a)</th><th>Total</th><th>Tel</th><th>TMA Tel</th><th>TME Tel</th><th>WhatsApp</th><th>TME Wpp</th><th>Zendesk</th><th>SLA Zen</th><th>Supplier</th><th>Meta</th></tr></thead>';
+  const tb=document.createElement('tbody');
+  dayNames.forEach((n,i)=>{
+    const r=dayRows[i];if(!r)return;
+    const ok=r.total>=META_DIA;
+    const slaZen=r.sla_zen!==null?Math.round(r.sla_zen*100)+'%':'—';
+    tb.innerHTML+=`<tr>
+      <td style="font-weight:500">${n}</td>
+      <td class="num" style="font-weight:600;color:${ok?'#FFE500':'#F05C5C'}">${r.total}</td>
+      <td class="num">${r.tel}</td>
+      <td class="num">${r.tma_tel?fmtMin(timeToMin(r.tma_tel)):'—'}</td>
+      <td class="num">${r.tme_tel?fmtMin(timeToMin(r.tme_tel)):'—'}</td>
+      <td class="num">${r.chat}</td>
+      <td class="num">${r.tme_chat?fmtMin(timeToMin(r.tme_chat)):'—'}</td>
+      <td class="num">${r.zen}</td>
+      <td class="num">${slaZen}</td>
+      <td class="num">${r.supplier}</td>
+      <td><span class="badge ${ok?'badge-ok':'badge-bad'}">${ok?'✓ Meta':'✗ Abaixo'}</span></td>
+    </tr>`;
+  });
+  t.appendChild(tb);
+}
+
+// ── INDIVIDUAL ───────────────────────────────────────────────
+function renderIndividual(){
+  const n=currentConsultor;if(!n)return;
+  const d=RAW[n]||[];
+  document.getElementById('chartsArea').innerHTML=`
+    <div class="chart-grid chart-grid-3" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">${n} — atendimentos por dia</div><div class="card-sub">Meta: ${META_DIA}/dia</div></div></div>
+        <div class="chart-wrap" style="height:280px"><canvas id="indBar"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Distribuição por canal</div></div></div>
+        <div class="chart-wrap" style="height:280px"><canvas id="indCanal"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid chart-grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">TMA/TME Telefone por dia</div></div></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="indTmaTel"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">TME WhatsApp por dia</div></div></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="indTmeWpp"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid chart-grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">SLA Zendesk diário</div></div></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="indSla"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">CSAT diário por canal</div></div></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="indCsat"></canvas></div>
+      </div>
+    </div>`;
+
+  destroyChart('indBar');
+  charts['indBar']=new Chart(document.getElementById('indBar').getContext('2d'),{type:'bar',data:{labels:d.map(r=>r.data),datasets:[{label:'Meta',data:d.map(()=>META_DIA),type:'line',borderColor:'#FFE50080',borderDash:[6,3],borderWidth:2,pointRadius:0,fill:false},{data:d.map(r=>r[currentMetric]||0),backgroundColor:d.map(r=>r.total>=META_DIA?'#FFE50060':'#F05C5C60'),borderColor:d.map(r=>r.total>=META_DIA?'#FFE500':'#F05C5C'),borderWidth:1.5,borderRadius:5}]},options:{...chartOpts(true),plugins:{legend:{display:false}}}});
+
+  destroyChart('indCanal');
+  const tel=totalFor(n,'tel'),chat=totalFor(n,'chat'),zen=totalFor(n,'zen'),sup=totalFor(n,'supplier');
+  charts['indCanal']=new Chart(document.getElementById('indCanal').getContext('2d'),{type:'doughnut',data:{labels:['Telefone','WhatsApp','Zendesk','Supplier'],datasets:[{data:[tel,chat,zen,sup],backgroundColor:[CANAL_COLORS.tel,CANAL_COLORS.chat,CANAL_COLORS.zen,CANAL_COLORS.supplier],borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{color:'#8B93A8',font:{size:11},boxWidth:10,padding:12}}}}});
+
+  destroyChart('indTmaTel');
+  const dTma=d.filter(r=>timeToMin(r.tma_tel)>0||timeToMin(r.tme_tel)>0);
+  charts['indTmaTel']=new Chart(document.getElementById('indTmaTel').getContext('2d'),{type:'bar',data:{labels:dTma.map(r=>r.data),datasets:[{label:'TMA Tel',data:dTma.map(r=>Math.round((timeToMin(r.tma_tel)||0)*10)/10),backgroundColor:'#0055B860',borderColor:'#0055B8',borderWidth:1.5,borderRadius:3},{label:'TME Tel',data:dTma.map(r=>Math.round((timeToMin(r.tme_tel)||0)*10)/10),backgroundColor:'#00C8C860',borderColor:'#00C8C8',borderWidth:1.5,borderRadius:3}]},options:chartOpts(false)});
+
+  destroyChart('indTmeWpp');
+  const dTmeW=d.filter(r=>timeToMin(r.tme_chat)>0);
+  charts['indTmeWpp']=new Chart(document.getElementById('indTmeWpp').getContext('2d'),{type:'bar',data:{labels:dTmeW.map(r=>r.data),datasets:[{label:'TME WhatsApp',data:dTmeW.map(r=>Math.round((timeToMin(r.tme_chat)||0)*10)/10),backgroundColor:'#FFE50060',borderColor:'#FFE500',borderWidth:1.5,borderRadius:3}]},options:chartOpts(true)});
+
+  destroyChart('indSla');
+  const slaD=d.filter(r=>r.sla_zen!==null&&typeof r.sla_zen==='number');
+  charts['indSla']=new Chart(document.getElementById('indSla').getContext('2d'),{type:'bar',data:{labels:slaD.map(r=>r.data),datasets:[{data:slaD.map(r=>Math.round(r.sla_zen*100)),backgroundColor:slaD.map(r=>r.sla_zen>=.9?'#FFE50060':r.sla_zen>=.7?'#FFE50060':'#F05C5C60'),borderColor:slaD.map(r=>r.sla_zen>=.9?'#FFE500':r.sla_zen>=.7?'#FFE500':'#F05C5C'),borderWidth:1.5,borderRadius:4}]},options:{...chartOpts(true),scales:{y:{min:0,max:100,ticks:{color:'#555E75',callback:v=>v+'%',font:{size:10}},grid:{color:'#2A3045'}},x:{ticks:{color:'#555E75',font:{size:10}},grid:{display:false}}}}});
+
+  destroyChart('indCsat');
+  const csatD=d.filter(r=>r.csat_tel!==null||r.csat_chat!==null||r.csat_zen!==null);
+  charts['indCsat']=new Chart(document.getElementById('indCsat').getContext('2d'),{type:'bar',data:{labels:csatD.map(r=>r.data),datasets:[{label:'Tel',data:csatD.map(r=>r.csat_tel!==null?Math.round(r.csat_tel*100):null),backgroundColor:'#0055B860',borderColor:'#0055B8',borderWidth:1.5,borderRadius:3},{label:'WhatsApp',data:csatD.map(r=>r.csat_chat!==null?Math.round(r.csat_chat*100):null),backgroundColor:'#FFE50060',borderColor:'#FFE500',borderWidth:1.5,borderRadius:3},{label:'Zen',data:csatD.map(r=>r.csat_zen!==null?Math.round(r.csat_zen*100):null),backgroundColor:'#60A5FA60',borderColor:'#60A5FA',borderWidth:1.5,borderRadius:3}]},options:{...chartOpts(false),scales:{y:{min:0,max:100,ticks:{color:'#555E75',callback:v=>v+'%',font:{size:10}},grid:{color:'#2A3045'}},x:{ticks:{color:'#555E75',font:{size:10}},grid:{display:false}}}}});
+
+  renderTable();
+}
+
+// ── SEMANA ───────────────────────────────────────────────────
+function renderSemana(){
+  const weeks=['S1','S2','S3','S4'];
+  const teamWeeks={};weeks.forEach(w=>teamWeeks[w]=names.reduce((s,n)=>{const r=(RAW[n]||[]).filter(x=>getWeek(x.data)===w);return s+r.reduce((a,b)=>a+(b.total||0),0);},0));
+  const consultorWeekData=names.map(n=>{const wt={};weeks.forEach(w=>wt[w]=0);(RAW[n]||[]).forEach(r=>{const w=getWeek(r.data);if(wt[w]!==undefined)wt[w]+=r.total||0;});return{n,...wt};}).filter(x=>weeks.some(w=>x[w]>0));
+  document.getElementById('chartsArea').innerHTML=`
+    <div class="chart-grid chart-grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Volume por semana — time</div></div></div>
+        <div class="chart-wrap" style="height:260px"><canvas id="semTeam"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Comparativo por consultor</div><div class="legend" style="margin-top:6px">${weeks.map(w=>`<div class="legend-item"><span class="legend-dot" style="background:${WEEK_COLORS[w]}"></span>${WEEK_MAP[w]}</div>`).join('')}</div></div></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="semConsultor"></canvas></div>
+      </div>
+    </div>`;
+  destroyChart('semTeam');
+  charts['semTeam']=new Chart(document.getElementById('semTeam').getContext('2d'),{type:'bar',data:{labels:weeks.map(w=>WEEK_MAP[w]),datasets:[{data:weeks.map(w=>teamWeeks[w]),backgroundColor:weeks.map(w=>WEEK_COLORS[w]+'80'),borderColor:weeks.map(w=>WEEK_COLORS[w]),borderWidth:1.5,borderRadius:6}]},options:chartOpts(true)});
+  destroyChart('semConsultor');
+  const top8=consultorWeekData.sort((a,b)=>weeks.reduce((s,w)=>s+b[w]-a[w],0)).slice(0,8);
+  charts['semConsultor']=new Chart(document.getElementById('semConsultor').getContext('2d'),{type:'bar',data:{labels:top8.map(x=>x.n.split(' ')[0]),datasets:weeks.map(w=>({label:WEEK_MAP[w],data:top8.map(x=>x[w]),backgroundColor:WEEK_COLORS[w]+'80',borderColor:WEEK_COLORS[w],borderWidth:1.5,borderRadius:3}))},options:{...chartOpts(true),plugins:{legend:{display:false}}}});
+  document.getElementById('tableTitle').textContent='Produtividade por semana';
+  document.getElementById('tableSub').textContent='Total de atendimentos por semana';
+  const t=document.getElementById('mainTable');
+  t.innerHTML=`<thead><tr><th>Consultor(a)</th>${weeks.map(w=>`<th>${WEEK_MAP[w]}</th>`).join('')}<th>Total</th></tr></thead>`;
+  const tb=document.createElement('tbody');
+  consultorWeekData.sort((a,b)=>weeks.reduce((s,w)=>s+b[w]-a[w],0)).forEach(x=>{
+    const tot=weeks.reduce((s,w)=>s+x[w],0);
+    tb.innerHTML+=`<tr><td style="font-weight:500">${x.n}</td>${weeks.map(w=>`<td class="num">${x[w]||0}</td>`).join('')}<td class="num" style="font-weight:600">${tot}</td></tr>`;
+  });
+  t.appendChild(tb);
+}
+
+// ── METAS ────────────────────────────────────────────────────
+function renderMetas(){
+  const consultorData=names.map(n=>{
+    const d=RAW[n]||[];const dias=d.filter(r=>r.total>0).length||1;
+    const media=totalFor(n,'total')/dias;
+    const diasAcima=d.filter(r=>r.total>=META_DIA).length;
+    const pctDias=d.length?Math.round(diasAcima/d.length*100):0;
+    return{n,media:Math.round(media*10)/10,dias,diasAcima,pctDias,pct:Math.min(Math.round(media/META_DIA*100),150)};
+  }).sort((a,b)=>b.media-a.media);
+  document.getElementById('chartsArea').innerHTML=`
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-header"><div><div class="card-title">Atingimento da meta — ${META_DIA} atendimentos/dia</div></div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px" id="metaCards"></div>
+    </div>
+    <div class="chart-grid chart-grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">Média diária por consultor</div></div></div>
+        <div class="chart-wrap" style="height:260px"><canvas id="metaBar"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">% de dias acima da meta</div></div></div>
+        <div class="chart-wrap" style="height:260px"><canvas id="metaDias"></canvas></div>
+      </div>
+    </div>`;
+  const mc=document.getElementById('metaCards');
+  consultorData.forEach(({n,media,dias,diasAcima,pct})=>{
+    const color=pct>=100?'#FFE500':pct>=70?'#FFE500':'#F05C5C';
+    mc.innerHTML+=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-weight:600;font-size:13px">${n}</div><div style="font-size:13px;color:${color};font-family:'JetBrains Mono',monospace;font-weight:700">${media}/dia</div></div><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div class="meta-bar-wrap"><div class="meta-bar" style="width:${Math.min(pct,100)}%;background:${color}"></div></div><span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:${color};min-width:36px">${pct}%</span></div><div style="font-size:11px;color:var(--text3)">${diasAcima} de ${dias} dias acima da meta</div></div>`;
+  });
+  destroyChart('metaBar');
+  charts['metaBar']=new Chart(document.getElementById('metaBar').getContext('2d'),{type:'bar',data:{labels:consultorData.map(x=>x.n.split(' ')[0]),datasets:[{label:'Meta',data:consultorData.map(()=>META_DIA),type:'line',borderColor:'#FFE50080',borderDash:[6,3],borderWidth:2,pointRadius:0,fill:false},{label:'Média/dia',data:consultorData.map(x=>x.media),backgroundColor:consultorData.map(x=>x.media>=META_DIA?'#FFE50060':'#F05C5C60'),borderColor:consultorData.map(x=>x.media>=META_DIA?'#FFE500':'#F05C5C'),borderWidth:1.5,borderRadius:4}]},options:{...chartOpts(true),plugins:{legend:{display:false}}}});
+  destroyChart('metaDias');
+  charts['metaDias']=new Chart(document.getElementById('metaDias').getContext('2d'),{type:'bar',data:{labels:consultorData.map(x=>x.n.split(' ')[0]),datasets:[{data:consultorData.map(x=>x.pctDias),backgroundColor:consultorData.map(x=>x.pctDias>=70?'#FFE50060':'#FFE50060'),borderColor:consultorData.map(x=>x.pctDias>=70?'#FFE500':'#FFE500'),borderWidth:1.5,borderRadius:4}]},options:{...chartOpts(true),scales:{y:{min:0,max:100,ticks:{color:'#555E75',callback:v=>v+'%',font:{size:10}},grid:{color:'#2A3045'}},x:{ticks:{color:'#555E75',font:{size:10},maxRotation:45},grid:{display:false}}}}});
+  document.getElementById('tableTitle').textContent='Ranking de metas';
+  document.getElementById('tableSub').textContent='Média diária vs meta de '+META_DIA+'/dia';
+  const t=document.getElementById('mainTable');
+  t.innerHTML='<thead><tr><th>#</th><th>Consultor(a)</th><th>Dias</th><th>Média/dia</th><th>Dias acima meta</th><th>% dias</th><th>Atingimento</th></tr></thead>';
+  const tb=document.createElement('tbody');
+  consultorData.forEach(({n,media,dias,diasAcima,pctDias,pct},i)=>{
+    tb.innerHTML+=`<tr><td class="num" style="color:var(--text3)">${i+1}</td><td style="font-weight:500">${n}</td><td class="num">${dias}</td><td class="num">${media}</td><td class="num">${diasAcima}</td><td class="num">${pctDias}%</td><td><span class="badge ${pct>=100?'badge-ok':pct>=70?'badge-warn':'badge-bad'}">${pct}%</span></td></tr>`;
+  });
+  t.appendChild(tb);
+}
+
+// ── QUALIDADE ────────────────────────────────────────────────
+function renderQualidade(){
+  document.getElementById('chartsArea').innerHTML=`
+    <div class="chart-grid chart-grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">CSAT médio por consultor</div><div class="card-sub">Tel · WhatsApp · Zendesk</div></div></div>
+        <div class="chart-wrap" style="height:280px"><canvas id="csatBar"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">TMA médio — Telefone vs WhatsApp</div><div class="card-sub">Tempo Médio de Atendimento (minutos)</div></div></div>
+        <div class="chart-wrap" style="height:280px"><canvas id="tmaBar"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid chart-grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">TME — Telefone vs WhatsApp</div><div class="card-sub">Tempo Médio de Espera (minutos)</div></div></div>
+        <div class="chart-wrap" style="height:240px"><canvas id="tmeBar"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">SLA Zendesk médio</div><div class="card-sub">Verde ≥90% · Amarelo ≥70%</div></div></div>
+        <div class="chart-wrap" style="height:240px"><canvas id="qualSla"></canvas></div>
+      </div>
+    </div>`;
+
+  const csatData=names.map(n=>({n,tel:avgCSAT(n,'tel'),chat:avgCSAT(n,'chat'),zen:avgCSAT(n,'zen')})).filter(x=>x.tel!==null||x.chat!==null||x.zen!==null).sort((a,b)=>{const av=v=>v===null?0:v;return(av(b.tel)+av(b.chat)+av(b.zen))-(av(a.tel)+av(a.chat)+av(a.zen));});
+  destroyChart('csatBar');
+  charts['csatBar']=new Chart(document.getElementById('csatBar').getContext('2d'),{type:'bar',data:{labels:csatData.map(x=>x.n.split(' ')[0]),datasets:[{label:'Telefone',data:csatData.map(x=>x.tel!==null?Math.round(x.tel*100):null),backgroundColor:'#0055B860',borderColor:'#0055B8',borderWidth:1.5,borderRadius:3},{label:'WhatsApp',data:csatData.map(x=>x.chat!==null?Math.round(x.chat*100):null),backgroundColor:'#FFE50060',borderColor:'#FFE500',borderWidth:1.5,borderRadius:3},{label:'Zendesk',data:csatData.map(x=>x.zen!==null?Math.round(x.zen*100):null),backgroundColor:'#60A5FA60',borderColor:'#60A5FA',borderWidth:1.5,borderRadius:3}]},options:{...chartOpts(false),scales:{y:{min:0,max:100,ticks:{color:'#555E75',callback:v=>v+'%',font:{size:10}},grid:{color:'#2A3045'}},x:{ticks:{color:'#555E75',font:{size:10},maxRotation:45},grid:{display:false}}}}});
+
+  const tmaData=names.map(n=>({n,tel:avgTMA(n,'tel'),chat:avgTMA(n,'chat')})).filter(x=>x.tel!==null||x.chat!==null).sort((a,b)=>(a.tel||0)-(b.tel||0));
+  destroyChart('tmaBar');
+  charts['tmaBar']=new Chart(document.getElementById('tmaBar').getContext('2d'),{type:'bar',data:{labels:tmaData.map(x=>x.n.split(' ')[0]),datasets:[{label:'TMA Tel (min)',data:tmaData.map(x=>x.tel!==null?Math.round(x.tel*10)/10:null),backgroundColor:'#0055B860',borderColor:'#0055B8',borderWidth:1.5,borderRadius:3},{label:'TMA WhatsApp (min)',data:tmaData.map(x=>x.chat!==null?Math.round(x.chat*10)/10:null),backgroundColor:'#FFE50060',borderColor:'#FFE500',borderWidth:1.5,borderRadius:3}]},options:chartOpts(false)});
+
+  const tmeData=names.map(n=>({n,tel:avgTME(n,'tel'),chat:avgTME(n,'chat')})).filter(x=>x.tel!==null||x.chat!==null).sort((a,b)=>(a.tel||0)-(b.tel||0));
+  destroyChart('tmeBar');
+  charts['tmeBar']=new Chart(document.getElementById('tmeBar').getContext('2d'),{type:'bar',data:{labels:tmeData.map(x=>x.n.split(' ')[0]),datasets:[{label:'TME Tel (min)',data:tmeData.map(x=>x.tel!==null?Math.round(x.tel*10)/10:null),backgroundColor:'#0055B860',borderColor:'#0055B8',borderWidth:1.5,borderRadius:3},{label:'TME WhatsApp (min)',data:tmeData.map(x=>x.chat!==null?Math.round(x.chat*10)/10:null),backgroundColor:'#FFE50060',borderColor:'#FFE500',borderWidth:1.5,borderRadius:3}]},options:chartOpts(false)});
+
+  destroyChart('qualSla');
+  const slaData=names.map(n=>({n,v:avgSLA(n,'sla_zen')})).filter(x=>x.v!==null).map(x=>({n:x.n,v:x.v*100})).sort((a,b)=>b.v-a.v);
+  charts['qualSla']=new Chart(document.getElementById('qualSla').getContext('2d'),{type:'bar',data:{labels:slaData.map(x=>x.n.split(' ')[0]),datasets:[{data:slaData.map(x=>Math.round(x.v)),backgroundColor:slaData.map(x=>x.v>=90?'#FFE50060':x.v>=70?'#FFE50060':'#F05C5C60'),borderColor:slaData.map(x=>x.v>=90?'#FFE500':x.v>=70?'#FFE500':'#F05C5C'),borderWidth:1.5,borderRadius:4}]},options:{...chartOpts(true),scales:{y:{min:0,max:100,ticks:{color:'#555E75',callback:v=>v+'%',font:{size:10}},grid:{color:'#2A3045'}},x:{ticks:{color:'#555E75',font:{size:10},maxRotation:45},grid:{display:false}}}}});
+
+  document.getElementById('tableTitle').textContent='Indicadores de qualidade';
+  document.getElementById('tableSub').textContent='CSAT, TMA, TME e SLA por consultor';
+  const t=document.getElementById('mainTable');
+  t.innerHTML='<thead><tr><th>Consultor(a)</th><th>CSAT Tel</th><th>CSAT Wpp</th><th>CSAT Zen</th><th>TMA Tel</th><th>TMA Wpp</th><th>TME Tel</th><th>TME Wpp</th><th>SLA Zen</th></tr></thead>';
+  const tb=document.createElement('tbody');
+  names.forEach(n=>{
+    const ct=avgCSAT(n,'tel'),cc=avgCSAT(n,'chat'),cz=avgCSAT(n,'zen');
+    const tmaT=avgTMA(n,'tel'),tmaC=avgTMA(n,'chat'),tmeT=avgTME(n,'tel'),tmeC=avgTME(n,'chat');
+    const sla=avgSLA(n,'sla_zen');
+    tb.innerHTML+=`<tr><td style="font-weight:500">${n}</td><td class="num">${ct!==null?Math.round(ct*100)+'%':'—'}</td><td class="num">${cc!==null?Math.round(cc*100)+'%':'—'}</td><td class="num">${cz!==null?Math.round(cz*100)+'%':'—'}</td><td class="num">${fmtMin(tmaT)}</td><td class="num">${fmtMin(tmaC)}</td><td class="num">${fmtMin(tmeT)}</td><td class="num">${fmtMin(tmeC)}</td><td><span class="badge ${slaClass(sla!==null?sla*100:null)}">${sla!==null?Math.round(sla*100)+'%':'N/A'}</span></td></tr>`;
+  });
+  t.appendChild(tb);
+}
+
+// ── TABLE ────────────────────────────────────────────────────
+function renderTable(){
+  const t=document.getElementById('mainTable');
+  if(currentView==='individual'){
+    const n=currentConsultor;
+    document.getElementById('tableTitle').textContent=n+' — histórico diário';
+    document.getElementById('tableSub').textContent='Detalhe por dia trabalhado';
+    t.innerHTML='<thead><tr><th>Data</th><th>Total</th><th>Tel</th><th>TMA Tel</th><th>TME Tel</th><th>WhatsApp</th><th>TME Wpp</th><th>Zendesk</th><th>SLA Zen</th><th>Supplier</th><th>Meta</th></tr></thead>';
+    const tb=document.createElement('tbody');
+    (RAW[n]||[]).forEach(r=>{
+      const ok=r.total>=META_DIA;
+      const slaZen=r.sla_zen!==null&&typeof r.sla_zen==='number'?Math.round(r.sla_zen*100)+'%':'—';
+      tb.innerHTML+=`<tr><td style="font-weight:500">${r.data}</td><td class="num" style="color:${ok?'#FFE500':'#F05C5C'};font-weight:600">${r.total}</td><td class="num">${r.tel}</td><td class="num">${fmtMin(timeToMin(r.tma_tel))}</td><td class="num">${fmtMin(timeToMin(r.tme_tel))}</td><td class="num">${r.chat}</td><td class="num">${fmtMin(timeToMin(r.tme_chat))}</td><td class="num">${r.zen}</td><td class="num">${slaZen}</td><td class="num">${r.supplier}</td><td><span class="badge ${ok?'badge-ok':'badge-bad'}">${ok?'✓':'✗'}</span></td></tr>`;
+    });
+    t.appendChild(tb);
+  } else {
+    document.getElementById('tableTitle').textContent='Ranking do Time';
+    document.getElementById('tableSub').textContent='Total acumulado no período';
+    t.innerHTML='<thead><tr><th>#</th><th>Consultor(a)</th><th>Dias</th><th>Total</th><th>Média/dia</th><th>Tel</th><th>WhatsApp</th><th>Zendesk</th><th>Supplier</th><th>SLA Zen</th></tr></thead>';
+    const tb=document.createElement('tbody');
+    names.map(n=>({n,total:totalFor(n,'total'),tel:totalFor(n,'tel'),chat:totalFor(n,'chat'),zen:totalFor(n,'zen'),sup:totalFor(n,'supplier'),sla:avgSLA(n,'sla_zen'),dias:(RAW[n]||[]).filter(r=>r.total>0).length}))
+      .sort((a,b)=>b.total-a.total)
+      .forEach((r,i)=>{
+        const media=r.dias?Math.round(r.total/r.dias*10)/10:0;
+        const ok=media>=META_DIA;
+        const slaVal=r.sla!==null?Math.round(r.sla*100):null;
+        tb.innerHTML+=`<tr><td class="num" style="color:var(--text3)">${i+1}</td><td style="font-weight:500">${r.n}</td><td class="num">${r.dias}</td><td class="num" style="font-weight:600">${r.total}</td><td class="num" style="color:${ok?'#FFE500':'#F05C5C'}">${media}</td><td class="num">${r.tel}</td><td class="num">${r.chat}</td><td class="num">${r.zen}</td><td class="num">${r.sup}</td><td><span class="badge ${slaClass(slaVal)}">${slaText(slaVal)}</span></td></tr>`;
+      });
+    t.appendChild(tb);
+  }
+}
+
+loadData();
+</script>
+
+<script>
+function renderGestao() {
+  const META_CSAT = 0.9;
+  const stats = names.map(function(n) {
+    const d = RAW[n] || [];
+    const dias = d.filter(function(r) { return r.total > 0; }).length || 1;
+    const media = Math.round(totalFor(n,'total') / dias * 10) / 10;
+    const diasAcima = d.filter(function(r) { return r.total >= META_DIA; }).length;
+    const csatTel = avgCSAT(n,'tel');
+    const csatChat = avgCSAT(n,'chat');
+    const csatZen = avgCSAT(n,'zen');
+    const metaTel = csatTel !== null && csatTel >= META_CSAT;
+    const metaChat = csatChat !== null && csatChat >= META_CSAT;
+    const metaZen = csatZen !== null && csatZen >= META_CSAT;
+    const metaTickets = media >= META_DIA;
+    const canaisComDados = [csatTel!==null,csatChat!==null,csatZen!==null].filter(Boolean).length;
+    const canaisOk = [metaTel,metaChat,metaZen].filter(Boolean).length;
+    const statusGeral = metaTickets && canaisOk === canaisComDados ? 'ok' : metaTickets || canaisOk >= 1 ? 'warn' : 'bad';
+    const weeks = ['S1','S2','S3','S4'];
+    const weekTotals = {};
+    weeks.forEach(function(w){ const wd=d.filter(function(r){return getWeek(r.data)===w;}); weekTotals[w]=wd.reduce(function(s,r){return s+(r.total||0);},0); });
+    const activeWeeks = weeks.filter(function(w){return weekTotals[w]>0;});
+    let quedaSemanal=false, quedaPct=0;
+    if(activeWeeks.length>=2){
+      const last=activeWeeks[activeWeeks.length-1], prev=activeWeeks[activeWeeks.length-2];
+      if(weekTotals[prev]>0){ quedaPct=Math.round((weekTotals[prev]-weekTotals[last])/weekTotals[prev]*100); quedaSemanal=quedaPct>=20; }
+    }
+    return {n,media,dias,diasAcima,csatTel,csatChat,csatZen,metaTel,metaChat,metaZen,metaTickets,statusGeral,canaisOk,canaisComDados,quedaSemanal,quedaPct};
+  });
+
+  const totalOk=stats.filter(function(s){return s.statusGeral==='ok';}).length;
+  const totalBad=stats.filter(function(s){return s.statusGeral==='bad';}).length;
+  const totalWarn=stats.filter(function(s){return s.statusGeral==='warn';}).length;
+  const pctTickets=Math.round(stats.filter(function(s){return s.metaTickets;}).length/stats.length*100);
+  const comDados=stats.filter(function(s){return s.canaisComDados>0;});
+  const pctCsat=comDados.length?Math.round(comDados.filter(function(s){return s.canaisOk===s.canaisComDados;}).length/comDados.length*100):0;
+  const alertas=stats.filter(function(s){return s.quedaSemanal;});
+  const medalColors=['#FFE500','#C0C0C0','#CD7F32'];
+  const medalLabel=['Ouro','Prata','Bronze'];
+  const statusColor={ok:'#22C55E',warn:'#FFE500',bad:'#F05C5C'};
+  const statusLabel={ok:'Na meta',warn:'Parcial',bad:'Abaixo'};
+
+  const top3=stats.slice().sort(function(a,b){return b.media-a.media;}).slice(0,3);
+  const top3csat=comDados.map(function(s){
+    const vals=[s.csatTel,s.csatChat,s.csatZen].filter(function(v){return v!==null;});
+    return Object.assign({},s,{avgCsat:vals.reduce(function(a,b){return a+b;},0)/vals.length});
+  }).sort(function(a,b){return b.avgCsat-a.avgCsat;}).slice(0,3);
+
+  const area=document.getElementById('chartsArea');
+  area.innerHTML='';
+
+  // ALERTAS DE QUEDA
+  if(alertas.length>0){
+    const alertDiv=document.createElement('div');
+    alertDiv.style.cssText='background:#3B0D0D;border:1px solid #F05C5C;border-radius:12px;padding:1rem 1.4rem;margin-bottom:14px;';
+    alertDiv.innerHTML='<div style="font-size:13px;font-weight:600;color:#F05C5C;margin-bottom:8px">Alerta de queda de performance semanal</div>'+
+      alertas.map(function(s){return '<div style="font-size:12px;color:#EFF3FF;margin-bottom:4px">• <strong>'+s.n+'</strong> queda de <strong style="color:#F05C5C">'+s.quedaPct+'%</strong> em relacao a semana anterior</div>';}).join('');
+    area.appendChild(alertDiv);
+  }
+
+  // PAINEL EXECUTIVO
+  const painelDiv=document.createElement('div');
+  painelDiv.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px';
+  const kpis=[
+    {label:'Na meta (tickets + CSAT)',val:totalOk,sub:'de '+stats.length+' consultores',color:'#FFE500'},
+    {label:'Meta 40 tickets/dia',val:pctTickets+'%',sub:stats.filter(function(s){return s.metaTickets;}).length+' de '+stats.length+' atingiram',color:pctTickets>=70?'#22C55E':'#F05C5C'},
+    {label:'Meta CSAT 90%',val:pctCsat+'%',sub:comDados.filter(function(s){return s.canaisOk===s.canaisComDados;}).length+' de '+comDados.length+' atingiram',color:pctCsat>=70?'#22C55E':'#F05C5C'},
+    {label:'Pontos de atencao',val:totalBad,sub:totalWarn+' atingiram parcialmente',color:'#F05C5C'}
+  ];
+  painelDiv.innerHTML=kpis.map(function(item){
+    return '<div style="background:linear-gradient(135deg,#1D2946,#243156);border:1px solid #2A3F7A;border-radius:12px;padding:1.2rem;text-align:center">'+
+      '<div style="font-size:11px;color:#6B85B8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">'+item.label+'</div>'+
+      '<div style="font-size:38px;font-weight:700;color:'+item.color+';font-family:monospace">'+item.val+'</div>'+
+      '<div style="font-size:11px;color:#8BA3D4;margin-top:4px">'+item.sub+'</div></div>';
+  }).join('');
+  area.appendChild(painelDiv);
+
+  // MELHORES PERFORMERS
+  const grid2=document.createElement('div');
+  grid2.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px';
+
+  function makeRankCard(title,sub,items){
+    const div=document.createElement('div');
+    div.className='card';
+    div.innerHTML='<div class="card-header"><div><div class="card-title">'+title+'</div><div class="card-sub">'+sub+'</div></div></div>';
+    const list=document.createElement('div');
+    list.style.cssText='display:flex;flex-direction:column;gap:10px';
+    items.forEach(function(item,i){
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:8px;border-left:3px solid '+medalColors[i];
+      row.innerHTML='<div style="font-size:11px;font-weight:700;color:'+medalColors[i]+';min-width:44px;text-align:center">#'+(i+1)+'<br><span style="font-size:9px">'+medalLabel[i]+'</span></div>'+
+        '<div style="flex:1"><div style="font-weight:600;font-size:13px">'+item.name+'</div><div style="font-size:11px;color:#8BA3D4;margin-top:2px">'+item.sub+'</div></div>'+
+        '<div style="text-align:right"><div style="font-size:20px;font-weight:700;color:'+medalColors[i]+';font-family:monospace">'+item.val+'</div><div style="font-size:10px;color:#6B85B8">'+item.unit+'</div></div>';
+      list.appendChild(row);
+    });
+    div.appendChild(list);
+    return div;
+  }
+
+  grid2.appendChild(makeRankCard('Melhores performers — Volume','Maior media diaria de atendimentos',
+    top3.map(function(s){return {name:s.n,sub:s.diasAcima+' de '+s.dias+' dias acima da meta',val:s.media,unit:'media/dia'};})));
+
+  grid2.appendChild(makeRankCard('Melhores performers — CSAT','Maior indice de satisfacao dos clientes',
+    top3csat.map(function(s){
+      const det=[s.csatTel!==null?'Tel:'+Math.round(s.csatTel*100)+'%':null,s.csatChat!==null?'Wpp:'+Math.round(s.csatChat*100)+'%':null,s.csatZen!==null?'Zen:'+Math.round(s.csatZen*100)+'%':null].filter(Boolean).join(' | ');
+      return {name:s.n,sub:det,val:Math.round(s.avgCsat*100)+'%',unit:'CSAT medio'};
+    })));
+  area.appendChild(grid2);
+
+  // PONTOS DE ATENCAO
+  const atencaoCard=document.createElement('div');
+  atencaoCard.className='card';
+  atencaoCard.style.marginBottom='14px';
+  atencaoCard.innerHTML='<div class="card-header"><div><div class="card-title">Pontos de atencao</div><div class="card-sub">Consultores abaixo das metas de tickets ou CSAT</div></div></div>';
+  const atencaoGrid=document.createElement('div');
+  atencaoGrid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px';
+  const atencaoList=stats.filter(function(s){return s.statusGeral==='bad'||s.statusGeral==='warn';});
+  if(atencaoList.length===0){
+    atencaoGrid.innerHTML='<div style="padding:20px;text-align:center;color:#22C55E;font-weight:500;grid-column:1/-1">Todos os consultores estao atingindo as metas!</div>';
+  } else {
+    atencaoList.sort(function(a,b){const o={bad:0,warn:1};return o[a.statusGeral]-o[b.statusGeral];}).forEach(function(s){
+      const cor=s.statusGeral==='bad'?'#F05C5C':'#FFE500';
+      const problemas=[];
+      if(!s.metaTickets) problemas.push('Tickets: '+s.media+'/dia (meta: '+META_DIA+')');
+      if(s.csatTel!==null&&!s.metaTel) problemas.push('CSAT Tel: '+Math.round(s.csatTel*100)+'% (meta: 90%)');
+      if(s.csatChat!==null&&!s.metaChat) problemas.push('CSAT Wpp: '+Math.round(s.csatChat*100)+'% (meta: 90%)');
+      if(s.csatZen!==null&&!s.metaZen) problemas.push('CSAT Zen: '+Math.round(s.csatZen*100)+'% (meta: 90%)');
+      if(s.quedaSemanal) problemas.push('Queda de '+s.quedaPct+'% vs semana anterior');
+      const div=document.createElement('div');
+      div.style.cssText='background:var(--surface2);border:1px solid '+cor+'40;border-radius:10px;padding:12px 14px;border-left:4px solid '+cor;
+      div.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+        '<div style="font-weight:600;font-size:13px">'+s.n+'</div>'+
+        '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:'+cor+'20;color:'+cor+'">'+statusLabel[s.statusGeral]+'</span></div>'+
+        problemas.map(function(p){return '<div style="font-size:11px;color:#8BA3D4;display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="color:'+cor+'">✗</span>'+p+'</div>';}).join('');
+      atencaoGrid.appendChild(div);
+    });
+  }
+  atencaoCard.appendChild(atencaoGrid);
+  area.appendChild(atencaoCard);
+
+  // SEMAFORO
+  const semaforoCard=document.createElement('div');
+  semaforoCard.className='card';
+  semaforoCard.style.marginBottom='14px';
+  semaforoCard.innerHTML='<div class="card-header"><div><div class="card-title">Semaforo de metas — visao individual</div><div class="card-sub">Meta: 40 tickets/dia | CSAT 90% em todos os canais</div></div></div>';
+  const semaforoGrid=document.createElement('div');
+  semaforoGrid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px';
+  stats.slice().sort(function(a,b){const o={ok:0,warn:1,bad:2};return o[a.statusGeral]-o[b.statusGeral];}).forEach(function(s){
+    const cor=statusColor[s.statusGeral];
+    const div=document.createElement('div');
+    div.style.cssText='background:var(--surface2);border:1px solid '+cor+'40;border-radius:10px;padding:12px 14px;border-left:4px solid '+cor;
+    div.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+      '<div style="font-weight:600;font-size:13px">'+s.n+(s.quedaSemanal?' <span style="font-size:10px;color:#F05C5C">▼'+s.quedaPct+'%</span>':'')+'</div>'+
+      '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:'+cor+'20;color:'+cor+'">'+statusLabel[s.statusGeral]+'</span></div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">'+
+      '<div style="color:#8BA3D4">Tickets: <span style="color:'+(s.metaTickets?'#22C55E':'#F05C5C')+';font-family:monospace">'+s.media+'/dia</span></div>'+
+      '<div style="color:#8BA3D4">CSAT Tel: <span style="color:'+(s.csatTel===null?'#4A5A8A':s.metaTel?'#22C55E':'#F05C5C')+';font-family:monospace">'+(s.csatTel!==null?Math.round(s.csatTel*100)+'%':'N/A')+'</span></div>'+
+      '<div style="color:#8BA3D4">CSAT Wpp: <span style="color:'+(s.csatChat===null?'#4A5A8A':s.metaChat?'#22C55E':'#F05C5C')+';font-family:monospace">'+(s.csatChat!==null?Math.round(s.csatChat*100)+'%':'N/A')+'</span></div>'+
+      '<div style="color:#8BA3D4">CSAT Zen: <span style="color:'+(s.csatZen===null?'#4A5A8A':s.metaZen?'#22C55E':'#F05C5C')+';font-family:monospace">'+(s.csatZen!==null?Math.round(s.csatZen*100)+'%':'N/A')+'</span></div>'+
+      '</div>';
+    semaforoGrid.appendChild(div);
+  });
+  semaforoCard.appendChild(semaforoGrid);
+  area.appendChild(semaforoCard);
+
+  // TABLE
+  document.getElementById('tableTitle').textContent='Ranking geral — tickets + CSAT';
+  document.getElementById('tableSub').textContent='Ordenado por status de metas';
+  const t=document.getElementById('mainTable');
+  t.innerHTML='<thead><tr><th>Status</th><th>Consultor(a)</th><th>Media/dia</th><th>Dias na meta</th><th>CSAT Tel</th><th>CSAT Wpp</th><th>CSAT Zen</th><th>Alerta</th></tr></thead>';
+  const tb=document.createElement('tbody');
+  stats.slice().sort(function(a,b){const o={ok:0,warn:1,bad:2};return o[a.statusGeral]-o[b.statusGeral];}).forEach(function(s){
+    const sc=statusColor[s.statusGeral];
+    function fmt(v,ok){return v!==null?'<span style="color:'+(ok?'#22C55E':'#F05C5C')+';font-family:monospace">'+Math.round(v*100)+'%</span>':'<span style="color:#4A5A8A">N/A</span>';}
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:'+sc+'20;color:'+sc+'">'+statusLabel[s.statusGeral]+'</span></td>'+
+      '<td style="font-weight:500">'+s.n+'</td>'+
+      '<td style="color:'+(s.metaTickets?'#22C55E':'#F05C5C')+';font-family:monospace;font-weight:600">'+s.media+'</td>'+
+      '<td class="num">'+s.diasAcima+'/'+s.dias+'</td>'+
+      '<td>'+fmt(s.csatTel,s.metaTel)+'</td>'+
+      '<td>'+fmt(s.csatChat,s.metaChat)+'</td>'+
+      '<td>'+fmt(s.csatZen,s.metaZen)+'</td>'+
+      '<td>'+(s.quedaSemanal?'<span style="color:#F05C5C;font-size:11px;font-weight:600">▼ '+s.quedaPct+'%</span>':'<span style="color:#4A5A8A;font-size:11px">—</span>')+'</td>';
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+}
+
+function renderQualidade(){
+  document.getElementById('chartsArea').innerHTML=`
+    <div class="chart-grid chart-grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">CSAT médio por consultor</div><div class="card-sub">Tel · WhatsApp · Zendesk</div></div></div>
+        <div class="chart-wrap" style="height:280px"><canvas id="csatBar"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">TMA médio — Telefone vs WhatsApp</div><div class="card-sub">Tempo Médio de Atendimento (minutos)</div></div></div>
+        <div class="chart-wrap" style="height:280px"><canvas id="tmaBar"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid chart-grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">TME — Telefone vs WhatsApp</div><div class="card-sub">Tempo Médio de Espera (minutos)</div></div></div>
+        <div class="chart-wrap" style="height:240px"><canvas id="tmeBar"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">SLA Zendesk médio</div><div class="card-sub">Verde ≥90% · Amarelo ≥70%</div></div></div>
+        <div class="chart-wrap" style="height:240px"><canvas id="qualSla"></canvas></div>
+      </div>
+    </div>`;
+
+  const csatData=names.map(n=>({n,tel:avgCSAT(n,'tel'),chat:avgCSAT(n,'chat'),zen:avgCSAT(n,'zen')})).filter(x=>x.tel!==null||x.chat!==null||x.zen!==null).sort((a,b)=>{const av=v=>v===null?0:v;return(av(b.tel)+av(b.chat)+av(b.zen))-(av(a.tel)+av(a.chat)+av(a.zen));});
+  destroyChart('csatBar');
+  charts['csatBar']=new Chart(document.getElementById('csatBar').getContext('2d'),{type:'bar',data:{labels:csatData.map(x=>x.n.split(' ')[0]),datasets:[{label:'Telefone',data:csatData.map(x=>x.tel!==null?Math.round(x.tel*100):null),backgroundColor:'#0055B860',borderColor:'#0055B8',borderWidth:1.5,borderRadius:3},{label:'WhatsApp',data:csatData.map(x=>x.chat!==null?Math.round(x.chat*100):null),backgroundColor:'#FFE50060',borderColor:'#FFE500',borderWidth:1.5,borderRadius:3},{label:'Zendesk',data:csatData.map(x=>x.zen!==null?Math.round(x.zen*100):null),backgroundColor:'#60A5FA60',borderColor:'#60A5FA',borderWidth:1.5,borderRadius:3}]},options:{...chartOpts(false),scales:{y:{min:0,max:100,ticks:{color:'#555E75',callback:v=>v+'%',font:{size:10}},grid:{color:'#2A3045'}},x:{ticks:{color:'#555E75',font:{size:10},maxRotation:45},grid:{display:false}}}}});
+
+  const tmaData=names.map(n=>({n,tel:avgTMA(n,'tel'),chat:avgTMA(n,'chat')})).filter(x=>x.tel!==null||x.chat!==null).sort((a,b)=>(a.tel||0)-(b.tel||0));
+  destroyChart('tmaBar');
+  charts['tmaBar']=new Chart(document.getElementById('tmaBar').getContext('2d'),{type:'bar',data:{labels:tmaData.map(x=>x.n.split(' ')[0]),datasets:[{label:'TMA Tel (min)',data:tmaData.map(x=>x.tel!==null?Math.round(x.tel*10)/10:null),backgroundColor:'#0055B860',borderColor:'#0055B8',borderWidth:1.5,borderRadius:3},{label:'TMA WhatsApp (min)',data:tmaData.map(x=>x.chat!==null?Math.round(x.chat*10)/10:null),backgroundColor:'#FFE50060',borderColor:'#FFE500',borderWidth:1.5,borderRadius:3}]},options:chartOpts(false)});
+
+  const tmeData=names.map(n=>({n,tel:avgTME(n,'tel'),chat:avgTME(n,'chat')})).filter(x=>x.tel!==null||x.chat!==null).sort((a,b)=>(a.tel||0)-(b.tel||0));
+  destroyChart('tmeBar');
+  charts['tmeBar']=new Chart(document.getElementById('tmeBar').getContext('2d'),{type:'bar',data:{labels:tmeData.map(x=>x.n.split(' ')[0]),datasets:[{label:'TME Tel (min)',data:tmeData.map(x=>x.tel!==null?Math.round(x.tel*10)/10:null),backgroundColor:'#0055B860',borderColor:'#0055B8',borderWidth:1.5,borderRadius:3},{label:'TME WhatsApp (min)',data:tmeData.map(x=>x.chat!==null?Math.round(x.chat*10)/10:null),backgroundColor:'#FFE50060',borderColor:'#FFE500',borderWidth:1.5,borderRadius:3}]},options:chartOpts(false)});
+
+  destroyChart('qualSla');
+  const slaData=names.map(n=>({n,v:avgSLA(n,'sla_zen')})).filter(x=>x.v!==null).map(x=>({n:x.n,v:x.v*100})).sort((a,b)=>b.v-a.v);
+  charts['qualSla']=new Chart(document.getElementById('qualSla').getContext('2d'),{type:'bar',data:{labels:slaData.map(x=>x.n.split(' ')[0]),datasets:[{data:slaData.map(x=>Math.round(x.v)),backgroundColor:slaData.map(x=>x.v>=90?'#FFE50060':x.v>=70?'#FFE50060':'#F05C5C60'),borderColor:slaData.map(x=>x.v>=90?'#FFE500':x.v>=70?'#FFE500':'#F05C5C'),borderWidth:1.5,borderRadius:4}]},options:{...chartOpts(true),scales:{y:{min:0,max:100,ticks:{color:'#555E75',callback:v=>v+'%',font:{size:10}},grid:{color:'#2A3045'}},x:{ticks:{color:'#555E75',font:{size:10},maxRotation:45},grid:{display:false}}}}});
+
+  document.getElementById('tableTitle').textContent='Indicadores de qualidade';
+  document.getElementById('tableSub').textContent='CSAT, TMA, TME e SLA por consultor';
+  const t=document.getElementById('mainTable');
+  t.innerHTML='<thead><tr><th>Consultor(a)</th><th>CSAT Tel</th><th>CSAT Wpp</th><th>CSAT Zen</th><th>TMA Tel</th><th>TMA Wpp</th><th>TME Tel</th><th>TME Wpp</th><th>SLA Zen</th></tr></thead>';
+  const tb=document.createElement('tbody');
+  names.forEach(n=>{
+    const ct=avgCSAT(n,'tel'),cc=avgCSAT(n,'chat'),cz=avgCSAT(n,'zen');
+    const tmaT=avgTMA(n,'tel'),tmaC=avgTMA(n,'chat'),tmeT=avgTME(n,'tel'),tmeC=avgTME(n,'chat');
+    const sla=avgSLA(n,'sla_zen');
+    tb.innerHTML+=`<tr><td style="font-weight:500">${n}</td><td class="num">${ct!==null?Math.round(ct*100)+'%':'—'}</td><td class="num">${cc!==null?Math.round(cc*100)+'%':'—'}</td><td class="num">${cz!==null?Math.round(cz*100)+'%':'—'}</td><td class="num">${fmtMin(tmaT)}</td><td class="num">${fmtMin(tmaC)}</td><td class="num">${fmtMin(tmeT)}</td><td class="num">${fmtMin(tmeC)}</td><td><span class="badge ${slaClass(sla!==null?sla*100:null)}">${sla!==null?Math.round(sla*100)+'%':'N/A'}</span></td></tr>`;
+  });
+  t.appendChild(tb);
+}
+
+// ── TABLE ────────────────────────────────────────────────────
+function renderTable(){
+  const t=document.getElementById('mainTable');
+  if(currentView==='individual'){
+    const n=currentConsultor;
+    document.getElementById('tableTitle').textContent=n+' — histórico diário';
+    document.getElementById('tableSub').textContent='Detalhe por dia trabalhado';
+    t.innerHTML='<thead><tr><th>Data</th><th>Total</th><th>Tel</th><th>TMA Tel</th><th>TME Tel</th><th>WhatsApp</th><th>TME Wpp</th><th>Zendesk</th><th>SLA Zen</th><th>Supplier</th><th>Meta</th></tr></thead>';
+    const tb=document.createElement('tbody');
+    (RAW[n]||[]).forEach(r=>{
+      const ok=r.total>=META_DIA;
+      const slaZen=r.sla_zen!==null&&typeof r.sla_zen==='number'?Math.round(r.sla_zen*100)+'%':'—';
+      tb.innerHTML+=`<tr><td style="font-weight:500">${r.data}</td><td class="num" style="color:${ok?'#FFE500':'#F05C5C'};font-weight:600">${r.total}</td><td class="num">${r.tel}</td><td class="num">${fmtMin(timeToMin(r.tma_tel))}</td><td class="num">${fmtMin(timeToMin(r.tme_tel))}</td><td class="num">${r.chat}</td><td class="num">${fmtMin(timeToMin(r.tme_chat))}</td><td class="num">${r.zen}</td><td class="num">${slaZen}</td><td class="num">${r.supplier}</td><td><span class="badge ${ok?'badge-ok':'badge-bad'}">${ok?'✓':'✗'}</span></td></tr>`;
+    });
+    t.appendChild(tb);
+  } else {
+    document.getElementById('tableTitle').textContent='Ranking do Time';
+    document.getElementById('tableSub').textContent='Total acumulado no período';
+    t.innerHTML='<thead><tr><th>#</th><th>Consultor(a)</th><th>Dias</th><th>Total</th><th>Média/dia</th><th>Tel</th><th>WhatsApp</th><th>Zendesk</th><th>Supplier</th><th>SLA Zen</th></tr></thead>';
+    const tb=document.createElement('tbody');
+    names.map(n=>({n,total:totalFor(n,'total'),tel:totalFor(n,'tel'),chat:totalFor(n,'chat'),zen:totalFor(n,'zen'),sup:totalFor(n,'supplier'),sla:avgSLA(n,'sla_zen'),dias:(RAW[n]||[]).filter(r=>r.total>0).length}))
+      .sort((a,b)=>b.total-a.total)
+      .forEach((r,i)=>{
+        const media=r.dias?Math.round(r.total/r.dias*10)/10:0;
+        const ok=media>=META_DIA;
+        const slaVal=r.sla!==null?Math.round(r.sla*100):null;
+        tb.innerHTML+=`<tr><td class="num" style="color:var(--text3)">${i+1}</td><td style="font-weight:500">${r.n}</td><td class="num">${r.dias}</td><td class="num" style="font-weight:600">${r.total}</td><td class="num" style="color:${ok?'#FFE500':'#F05C5C'}">${media}</td><td class="num">${r.tel}</td><td class="num">${r.chat}</td><td class="num">${r.zen}</td><td class="num">${r.sup}</td><td><span class="badge ${slaClass(slaVal)}">${slaText(slaVal)}</span></td></tr>`;
+      });
+    t.appendChild(tb);
+  }
+}
+
+loadData();
+</script>
+
+<script>
+function renderGestao() {
+  const META_CSAT = 0.9;
+  const stats = names.map(function(n) {
+    const d = RAW[n] || [];
+    const dias = d.filter(function(r) { return r.total > 0; }).length || 1;
+    const media = Math.round(totalFor(n,'total') / dias * 10) / 10;
+    const diasAcima = d.filter(function(r) { return r.total >= META_DIA; }).length;
+    const csatTel = avgCSAT(n,'tel');
+    const csatChat = avgCSAT(n,'chat');
+    const csatZen = avgCSAT(n,'zen');
+    const metaTel = csatTel !== null && csatTel >= META_CSAT;
+    const metaChat = csatChat !== null && csatChat >= META_CSAT;
+    const metaZen = csatZen !== null && csatZen >= META_CSAT;
+    const metaTickets = media >= META_DIA;
+    const canaisComDados = [csatTel !== null, csatChat !== null, csatZen !== null].filter(Boolean).length;
+    const canaisOk = [metaTel, metaChat, metaZen].filter(Boolean).length;
+    const statusGeral = metaTickets && canaisOk === canaisComDados ? 'ok' : metaTickets || canaisOk >= 1 ? 'warn' : 'bad';
+
+    // Week comparison for alert
+    const weeks = ['S1','S2','S3','S4'];
+    const weekTotals = {};
+    weeks.forEach(function(w) {
+      const wd = d.filter(function(r) { return getWeek(r.data) === w; });
+      weekTotals[w] = wd.reduce(function(s,r) { return s + (r.total||0); }, 0);
+    });
+    // Find last 2 active weeks
+    const activeWeeks = weeks.filter(function(w) { return weekTotals[w] > 0; });
+    let quedaSemanal = false;
+    let quedaPct = 0;
+    if (activeWeeks.length >= 2) {
+      const last = activeWeeks[activeWeeks.length - 1];
+      const prev = activeWeeks[activeWeeks.length - 2];
+      if (weekTotals[prev] > 0) {
+        quedaPct = Math.round((weekTotals[prev] - weekTotals[last]) / weekTotals[prev] * 100);
+        quedaSemanal = quedaPct >= 20; // alert if dropped 20%+
+      }
+    }
+
+    return { n:n, media:media, dias:dias, diasAcima:diasAcima, csatTel:csatTel, csatChat:csatChat, csatZen:csatZen, metaTel:metaTel, metaChat:metaChat, metaZen:metaZen, metaTickets:metaTickets, statusGeral:statusGeral, canaisOk:canaisOk, canaisComDados:canaisComDados, quedaSemanal:quedaSemanal, quedaPct:quedaPct };
+  });
+
+  const totalOk = stats.filter(function(s) { return s.statusGeral === 'ok'; }).length;
+  const totalBad = stats.filter(function(s) { return s.statusGeral === 'bad'; }).length;
+  const totalWarn = stats.filter(function(s) { return s.statusGeral === 'warn'; }).length;
+  const pctTickets = Math.round(stats.filter(function(s) { return s.metaTickets; }).length / stats.length * 100);
+  const comDados = stats.filter(function(s) { return s.canaisComDados > 0; });
+  const pctCsat = comDados.length ? Math.round(comDados.filter(function(s) { return s.canaisOk === s.canaisComDados; }).length / comDados.length * 100) : 0;
+  const alertas = stats.filter(function(s) { return s.quedaSemanal; });
+  const medals = ['1', '2', '3'];
+  const medalColors = ['#FFE500','#C0C0C0','#CD7F32'];
+  const medalEmoji = ['Ouro','Prata','Bronze'];
+  const statusColor = { ok:'#22C55E', warn:'#FFE500', bad:'#F05C5C' };
+  const statusLabel = { ok:'Na meta', warn:'Parcial', bad:'Abaixo' };
+
+  const top3 = stats.slice().sort(function(a,b) { return b.media - a.media; }).slice(0,3);
+  const top3csat = comDados.map(function(s) {
+    const vals = [s.csatTel, s.csatChat, s.csatZen].filter(function(v) { return v !== null; });
+    return Object.assign({}, s, { avgCsat: vals.reduce(function(a,b) { return a+b; }, 0) / vals.length });
+  }).sort(function(a,b) { return b.avgCsat - a.avgCsat; }).slice(0,3);
+
+  const area = document.getElementById('chartsArea');
+  area.innerHTML = '';
+
+  // ALERTAS DE QUEDA
+  if (alertas.length > 0) {
+    const alertDiv = document.createElement('div');
+    alertDiv.style.cssText = 'background:#3B0D0D;border:1px solid #F05C5C;border-radius:12px;padding:1rem 1.4rem;margin-bottom:14px;';
+    alertDiv.innerHTML = '<div style="font-size:12px;font-weight:600;color:#F05C5C;margin-bottom:8px">Alerta de queda de performance semanal</div>' +
+      alertas.map(function(s) {
+        return '<div style="font-size:12px;color:#EFF3FF;margin-bottom:4px">• <strong>' + s.n + '</strong> teve queda de <strong style="color:#F05C5C">' + s.quedaPct + '%</strong> nos atendimentos em relacao a semana anterior</div>';
+      }).join('');
+    area.appendChild(alertDiv);
+  }
+
+  // PAINEL EXECUTIVO
+  const painelDiv = document.createElement('div');
+  painelDiv.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px';
+  painelDiv.innerHTML = [
+    {label:'Na meta (tickets + CSAT)', val:totalOk, sub:'de ' + stats.length + ' consultores', color:'#FFE500'},
+    {label:'Meta 40 tickets/dia', val:pctTickets+'%', sub:stats.filter(function(s){return s.metaTickets;}).length + ' de ' + stats.length + ' atingiram', color:pctTickets>=70?'#22C55E':'#F05C5C'},
+    {label:'Meta CSAT 90%', val:pctCsat+'%', sub:comDados.filter(function(s){return s.canaisOk===s.canaisComDados;}).length + ' de ' + comDados.length + ' atingiram', color:pctCsat>=70?'#22C55E':'#F05C5C'},
+    {label:'Pontos de atencao', val:totalBad, sub:totalWarn + ' atingiram parcialmente', color:'#F05C5C'}
+  ].map(function(item) {
+    return '<div style="background:linear-gradient(135deg,#1D2946,#243156);border:1px solid #1A2F6A;border-radius:12px;padding:1.2rem;text-align:center"><div style="font-size:11px;color:#7A8EBF;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">' + item.label + '</div><div style="font-size:40px;font-weight:700;color:' + item.color + ';font-family:monospace">' + item.val + '</div><div style="font-size:12px;color:#7A8EBF;margin-top:4px">' + item.sub + '</div></div>';
+  }).join('');
+  area.appendChild(painelDiv);
+
+  // MELHORES PERFORMERS + PONTOS DE ATENCAO
+  const grid2 = document.createElement('div');
+  grid2.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px';
+
+  function makeCard(title, sub, items) {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = '<div class="card-header"><div><div class="card-title">' + title + '</div><div class="card-sub">' + sub + '</div></div></div>';
+    const list = document.createElement('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:10px';
+    items.forEach(function(item, i) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:8px;border-left:3px solid ' + medalColors[i];
+      row.innerHTML = '<div style="font-size:11px;font-weight:700;color:' + medalColors[i] + ';min-width:44px;text-align:center">#' + (i+1) + '<br><span style="font-size:9px">' + medalEmoji[i] + '</span></div>' +
+        '<div style="flex:1"><div style="font-weight:600;font-size:13px">' + item.name + '</div><div style="font-size:11px;color:#7A8EBF;margin-top:2px">' + item.sub + '</div></div>' +
+        '<div style="text-align:right"><div style="font-size:20px;font-weight:700;color:' + medalColors[i] + ';font-family:monospace">' + item.val + '</div><div style="font-size:10px;color:#7A8EBF">' + item.unit + '</div></div>';
+      list.appendChild(row);
+    });
+    div.appendChild(list);
+    return div;
+  }
+
+  grid2.appendChild(makeCard('Melhores performers — Volume', 'Maior media diaria de atendimentos', top3.map(function(s) {
+    return { name:s.n, sub:s.diasAcima + ' de ' + s.dias + ' dias acima da meta', val:s.media, unit:'media/dia' };
+  })));
+
+  grid2.appendChild(makeCard('Melhores performers — CSAT', 'Maior indice de satisfacao dos clientes', top3csat.map(function(s) {
+    const detalhes = [s.csatTel!==null?'Tel:'+Math.round(s.csatTel*100)+'%':null, s.csatChat!==null?'Wpp:'+Math.round(s.csatChat*100)+'%':null, s.csatZen!==null?'Zen:'+Math.round(s.csatZen*100)+'%':null].filter(Boolean).join(' | ');
+    return { name:s.n, sub:detalhes, val:Math.round(s.avgCsat*100)+'%', unit:'CSAT medio' };
+  })));
+
+  area.appendChild(grid2);
+
+  // PONTOS DE ATENCAO
+  const atencaoCard = document.createElement('div');
+  atencaoCard.className = 'card';
+  atencaoCard.style.marginBottom = '14px';
+  atencaoCard.innerHTML = '<div class="card-header"><div><div class="card-title">Pontos de atencao</div><div class="card-sub">Consultores que precisam de suporte — abaixo das metas</div></div></div>';
+  const atencaoGrid = document.createElement('div');
+  atencaoGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px';
+  const atencaoList = stats.filter(function(s) { return s.statusGeral === 'bad' || s.statusGeral === 'warn'; });
+  if (atencaoList.length === 0) {
+    atencaoGrid.innerHTML = '<div style="padding:20px;text-align:center;color:#22C55E;font-weight:500;grid-column:1/-1">Todos os consultores estao atingindo as metas!</div>';
+  } else {
+    atencaoList.sort(function(a,b) { const o={bad:0,warn:1}; return o[a.statusGeral]-o[b.statusGeral]; }).forEach(function(s) {
+      const cor = s.statusGeral === 'bad' ? '#F05C5C' : '#FFE500';
+      const problemas = [];
+      if (!s.metaTickets) problemas.push('Tickets: ' + s.media + '/dia (meta: ' + META_DIA + ')');
+      if (s.csatTel !== null && !s.metaTel) problemas.push('CSAT Tel: ' + Math.round(s.csatTel*100) + '% (meta: 90%)');
+      if (s.csatChat !== null && !s.metaChat) problemas.push('CSAT Wpp: ' + Math.round(s.csatChat*100) + '% (meta: 90%)');
+      if (s.csatZen !== null && !s.metaZen) problemas.push('CSAT Zen: ' + Math.round(s.csatZen*100) + '% (meta: 90%)');
+      if (s.quedaSemanal) problemas.push('Queda de ' + s.quedaPct + '% vs semana anterior');
+      const div = document.createElement('div');
+      div.style.cssText = 'background:var(--surface2);border:1px solid ' + cor + '40;border-radius:10px;padding:12px 14px;border-left:4px solid ' + cor;
+      div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-weight:600;font-size:13px">' + s.n + '</div><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:' + cor + '20;color:' + cor + '">' + statusLabel[s.statusGeral] + '</span></div>' +
+        problemas.map(function(p) { return '<div style="font-size:11px;color:#7A8EBF;display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="color:' + cor + '">x</span>' + p + '</div>'; }).join('');
+      atencaoGrid.appendChild(div);
+    });
+  }
+  atencaoCard.appendChild(atencaoGrid);
+  area.appendChild(atencaoCard);
+
+  // SEMAFORO
+  const semaforoCard = document.createElement('div');
+  semaforoCard.className = 'card';
+  semaforoCard.style.marginBottom = '14px';
+  semaforoCard.innerHTML = '<div class="card-header"><div><div class="card-title">Semaforo de metas</div><div class="card-sub">Meta: 40 tickets/dia | CSAT 90% em todos os canais</div></div></div>';
+  const semaforoGrid = document.createElement('div');
+  semaforoGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px';
+  stats.slice().sort(function(a,b) { const o={ok:0,warn:1,bad:2}; return o[a.statusGeral]-o[b.statusGeral]; }).forEach(function(s) {
+    const cor = statusColor[s.statusGeral];
+    const div = document.createElement('div');
+    div.style.cssText = 'background:var(--surface2);border:1px solid ' + cor + '40;border-radius:10px;padding:12px 14px;border-left:4px solid ' + cor;
+    div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-weight:600;font-size:13px">' + s.n + (s.quedaSemanal ? ' <span style="font-size:10px;color:#F05C5C">v ' + s.quedaPct + '%</span>' : '') + '</div><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:' + cor + '20;color:' + cor + '">' + statusLabel[s.statusGeral] + '</span></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">' +
+      '<div style="color:#7A8EBF">Tickets: <span style="color:' + (s.metaTickets?'#22C55E':'#F05C5C') + ';font-family:monospace">' + s.media + '/dia</span></div>' +
+      '<div style="color:#7A8EBF">Tel CSAT: <span style="color:' + (s.csatTel===null?'#3D4F80':s.metaTel?'#22C55E':'#F05C5C') + ';font-family:monospace">' + (s.csatTel!==null?Math.round(s.csatTel*100)+'%':'N/A') + '</span></div>' +
+      '<div style="color:#7A8EBF">Wpp CSAT: <span style="color:' + (s.csatChat===null?'#3D4F80':s.metaChat?'#22C55E':'#F05C5C') + ';font-family:monospace">' + (s.csatChat!==null?Math.round(s.csatChat*100)+'%':'N/A') + '</span></div>' +
+      '<div style="color:#7A8EBF">Zen CSAT: <span style="color:' + (s.csatZen===null?'#3D4F80':s.metaZen?'#22C55E':'#F05C5C') + ';font-family:monospace">' + (s.csatZen!==null?Math.round(s.csatZen*100)+'%':'N/A') + '</span></div>' +
+      '</div>';
+    semaforoGrid.appendChild(div);
+  });
+  semaforoCard.appendChild(semaforoGrid);
+  area.appendChild(semaforoCard);
+
+  // TABLE
+  document.getElementById('tableTitle').textContent = 'Ranking geral — tickets + CSAT';
+  document.getElementById('tableSub').textContent = 'Ordenado por status de metas';
+  const t = document.getElementById('mainTable');
+  t.innerHTML = '<thead><tr><th>Status</th><th>Consultor(a)</th><th>Media/dia</th><th>Dias na meta</th><th>CSAT Tel</th><th>CSAT Wpp</th><th>CSAT Zen</th><th>Alerta</th></tr></thead>';
+  const tb = document.createElement('tbody');
+  stats.slice().sort(function(a,b) { const o={ok:0,warn:1,bad:2}; return o[a.statusGeral]-o[b.statusGeral]; }).forEach(function(s) {
+    const sc = statusColor[s.statusGeral];
+    function fmt(v, ok) { return v !== null ? '<span style="color:' + (ok?'#22C55E':'#F05C5C') + ';font-family:monospace">' + Math.round(v*100) + '%</span>' : '<span style="color:#3D4F80">N/A</span>'; }
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:' + sc + '20;color:' + sc + '">' + statusLabel[s.statusGeral] + '</span></td>' +
+      '<td style="font-weight:500">' + s.n + '</td>' +
+      '<td style="color:' + (s.metaTickets?'#22C55E':'#F05C5C') + ';font-family:monospace;font-weight:600">' + s.media + '</td>' +
+      '<td class="num">' + s.diasAcima + '/' + s.dias + '</td>' +
+      '<td>' + fmt(s.csatTel, s.metaTel) + '</td>' +
+      '<td>' + fmt(s.csatChat, s.metaChat) + '</td>' +
+      '<td>' + fmt(s.csatZen, s.metaZen) + '</td>' +
+      '<td>' + (s.quedaSemanal ? '<span style="color:#F05C5C;font-size:11px;font-weight:600">Queda ' + s.quedaPct + '%</span>' : '<span style="color:#3D4F80;font-size:11px">—</span>') + '</td>';
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+}
+
+var GEMINI_KEY = '';
+try { GEMINI_KEY = localStorage.getItem('gemini_key') || ''; } catch(e) {}
+var chatOpen = false;
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  const panel = document.getElementById('chatPanel');
+  if (chatOpen) {
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
+    initChat();
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+function initChat() {
+  if (GEMINI_KEY) {
+    document.getElementById('chatNoKey').style.display = 'none';
+    document.getElementById('chatReady').style.cssText = 'display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:0;';
+  } else {
+    document.getElementById('chatNoKey').style.display = 'block';
+    document.getElementById('chatReady').style.display = 'none';
+  }
+}
+
+function saveGeminiKey() {
+  const inp = document.getElementById('geminiKeyInput2') || document.getElementById('geminiKeyInput');
+  if (!inp) return;
+  const k = inp.value.trim();
+  if (!k) return;
+  GEMINI_KEY = k;
+  try { localStorage.setItem('gemini_key', k); } catch(e) {}
+  initChat();
+}
+
+function buildContext() {
+  if (!RAW || !names || names.length === 0) return 'Dados ainda nao carregados.';
+  const lines = ['Dados de produtividade do time de atendimento Paytrack - Junho 2026:'];
+  lines.push('Meta: 40 atendimentos/dia, CSAT meta: 90% em todos os canais');
+  lines.push('Canais: Telefone, WhatsApp (Chat), Zendesk, Supplier');
+  lines.push('');
+  names.forEach(function(n) {
+    const d = RAW[n] || [];
+    if (d.length === 0) return;
+    lines.push('Consultor: ' + n);
+    d.forEach(function(r) {
+      const slaZen = r.sla_zen !== null ? Math.round(r.sla_zen * 100) + '%' : 'N/A';
+      const slaSup = r.sla !== null ? Math.round(r.sla * 100) + '%' : 'N/A';
+      const csatTel = r.csat_tel !== null ? Math.round(r.csat_tel * 100) + '%' : 'N/A';
+      const csatChat = r.csat_chat !== null ? Math.round(r.csat_chat * 100) + '%' : 'N/A';
+      lines.push('  ' + r.data + ' | Total:' + r.total + ' Tel:' + r.tel + '(TMA:' + (r.tma_tel||'-') + ',TME:' + (r.tme_tel||'-') + ',CSAT:' + csatTel + ') Wpp:' + r.chat + '(TME:' + (r.tme_chat||'-') + ',CSAT:' + csatChat + ') Zen:' + r.zen + '(SLA:' + slaZen + ') Sup:' + r.supplier + '(SLA:' + slaSup + ')');
+    });
+  });
+  return lines.join('
+').substring(0, 12000);
+}
+
+function askSuggestion(text) {
+  document.getElementById('chatInput').value = text;
+  sendChat();
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msgs = document.getElementById('chatMsgs');
+  const question = input.value.trim();
+  if (!question || !GEMINI_KEY) return;
+
+  input.value = '';
+
+  const userMsg = document.createElement('div');
+  userMsg.className = 'chat-msg user';
+  userMsg.textContent = question;
+  msgs.appendChild(userMsg);
+
+  const loadMsg = document.createElement('div');
+  loadMsg.className = 'chat-msg ai loading';
+  loadMsg.textContent = 'Analisando dados...';
+  msgs.appendChild(loadMsg);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  const context = buildContext();
+  const prompt = 'Voce e um assistente de analise de dados de produtividade de um time de atendimento ao cliente. Responda em portugues de forma objetiva e direta. Use os dados abaixo para responder a pergunta.\n\nDADOS:\n' + context + '\n\nPERGUNTA: ' + question;
+
+  try {
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_KEY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+    const data = await res.json();
+    loadMsg.classList.remove('loading');
+    if (data.candidates && data.candidates[0]) {
+      loadMsg.textContent = data.candidates[0].content.parts[0].text;
+    } else if (data.error) {
+      loadMsg.textContent = 'Erro: ' + data.error.message;
+      loadMsg.style.color = '#F05C5C';
+    } else {
+      loadMsg.textContent = 'Nao foi possivel obter resposta.';
+    }
+  } catch(e) {
+    loadMsg.textContent = 'Erro de conexao: ' + e.message;
+    loadMsg.style.color = '#F05C5C';
+  }
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey && document.activeElement.id === 'chatInput') {
+    e.preventDefault();
+    sendChat();
+  }
+});
+
+</script>
+
+</body>
+</html>
